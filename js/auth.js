@@ -41,7 +41,10 @@ const AuthManager = (() => {
     return true;
   }
 
-  /* ── 로그인 처리 (email + password) ── */
+  /* ── 로그인 처리 (email + password) ──
+     주의: 비밀번호는 절대 브라우저로 내려받지 않는다.
+     Supabase RPC(verify_login)가 서버(DB) 측에서 비교하고
+     안전한 필드(id/email/full_name/role/department)만 돌려준다. */
   async function login(email, password) {
     if (!email || !password) throw new Error('이메일과 비밀번호를 입력해주세요.');
 
@@ -51,20 +54,18 @@ const AuthManager = (() => {
       throw new Error(`@${ALLOWED_DOMAIN} 이메일만 로그인 가능합니다.`);
     }
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${USERS_TABLE}?limit=500&order=created_at.asc`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/verify_login`, {
+      method: 'POST',
       headers: {
+        'Content-Type':  'application/json',
         'apikey':        SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
-      }
+      },
+      body: JSON.stringify({ p_email: emailLower, p_password: password }),
     });
     if (!res.ok) throw new Error('서버 오류가 발생했습니다.');
-    const users  = await res.json();
-
-    const user = users.find(u =>
-      (u.email || '').toLowerCase() === emailLower &&
-      u.password === password &&
-      u.active !== false
-    );
+    const rows = await res.json();
+    const user = Array.isArray(rows) ? rows[0] : null;
 
     if (!user) throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
 
