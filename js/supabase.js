@@ -8,7 +8,7 @@
 // Supabase 설정
 // ============================================================
 const SUPABASE_URL = 'https://lbcydtbbqasiyvqlfivc.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Jsx4rjVreEcfB9hmC7q3hg_zhJRZp-P';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiY3lkdGJicWFzaXl2cWxmaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5ODY5MTQsImV4cCI6MjA5ODU2MjkxNH0.oTsN920NDuFUFi6nz59amkvAmWg5ZsW_4hsR79TKhVs';
 
 const SB_HEADERS = {
   'Content-Type':  'application/json',
