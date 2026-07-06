@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IT 통합 자산관리 시스템</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ======= 사이드바 ======= -->
+<aside id="sidebar" class="sidebar fixed top-0 left-0 h-full bg-gradient-to-b from-blue-900 via-blue-800 to-indigo-900 text-white z-50 flex flex-col transition-all duration-300" style="width:260px;">
+  <div class="p-5 border-b border-blue-700 flex items-center gap-3">
+    <div class="bg-blue-500 rounded-xl p-2 flex-shrink-0">
+      <i class="fas fa-network-wired text-white text-xl"></i>
+    </div>
+    <div class="sidebar-text">
+      <div class="text-sm font-bold text-white leading-tight">IT 통합 자산관리</div>
+      <div class="text-xs text-blue-300">Management System v2.2</div>
+    </div>
+    <button id="sidebarToggle" class="ml-auto text-blue-300 hover:text-white"><i class="fas fa-bars text-lg"></i></button>
+  </div>
+
+  <nav class="flex-1 p-3 overflow-y-auto space-y-1">
+
+    <!-- 대시보드 (단독 메뉴) -->
+    <a href="#" class="nav-link active-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all" data-page="dashboard">
+      <i class="fas fa-tachometer-alt w-5 text-center text-lg flex-shrink-0"></i>
+      <span class="sidebar-text">대시보드</span>
+    </a>
+
+    <!-- ── 고정자산 관리 그룹 ── -->
+    <div class="nav-group" data-group="assets">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" onclick="toggleNavGroup('assets')">
+        <i class="fas fa-server w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">고정자산 관리</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="assets"><i class="fas fa-laptop w-4 text-center flex-shrink-0"></i><span class="sidebar-text">자산 대장</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="register"><i class="fas fa-plus-circle w-4 text-center flex-shrink-0"></i><span class="sidebar-text">자산 입고 등록</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="checkout"><i class="fas fa-sign-out-alt w-4 text-center flex-shrink-0"></i><span class="sidebar-text">반출 관리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="return"><i class="fas fa-sign-in-alt w-4 text-center flex-shrink-0"></i><span class="sidebar-text">반납 관리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="repair"><i class="fas fa-tools w-4 text-center flex-shrink-0"></i><span class="sidebar-text">수리 관리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="dispose"><i class="fas fa-trash-alt w-4 text-center flex-shrink-0"></i><span class="sidebar-text">폐기/매각</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="history"><i class="fas fa-history w-4 text-center flex-shrink-0"></i><span class="sidebar-text">변경 이력</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="warranty"><i class="fas fa-shield-alt w-4 text-center flex-shrink-0"></i><span class="sidebar-text">보증 만료</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ── IT 정기결제 그룹 ── -->
+    <div class="nav-group" data-group="sub">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" onclick="toggleNavGroup('sub')">
+        <i class="fas fa-credit-card w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">IT 정기결제</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-list"><i class="fas fa-list w-4 text-center flex-shrink-0"></i><span class="sidebar-text">구독 목록</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-register"><i class="fas fa-plus-square w-4 text-center flex-shrink-0"></i><span class="sidebar-text">구독 등록</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-renewal"><i class="fas fa-bell w-4 text-center flex-shrink-0"></i><span class="sidebar-text">갱신 알림</span><span id="renewalBadge" class="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full hidden sidebar-text">0</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-cost"><i class="fas fa-chart-line w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용 분석</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ── 판촉물 관리 그룹 ── -->
+    <div class="nav-group" data-group="promo">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" onclick="toggleNavGroup('promo')">
+        <i class="fas fa-gift w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">판촉물 관리</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="promo-stock"><i class="fas fa-boxes w-4 text-center flex-shrink-0"></i><span class="sidebar-text">재고 현황</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="promo-in"><i class="fas fa-arrow-circle-down w-4 text-center flex-shrink-0"></i><span class="sidebar-text">입고 처리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="promo-out"><i class="fas fa-arrow-circle-up w-4 text-center flex-shrink-0"></i><span class="sidebar-text">출고 처리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="promo-history"><i class="fas fa-list-alt w-4 text-center flex-shrink-0"></i><span class="sidebar-text">입출고 이력</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ── Azure 관리 그룹 ── -->
+    <div class="nav-group" data-group="azure">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" onclick="toggleNavGroup('azure')">
+        <i class="fab fa-microsoft w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">Azure 관리</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-dashboard"><i class="fas fa-chart-pie w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용 대시보드</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-resources"><i class="fas fa-server w-4 text-center flex-shrink-0"></i><span class="sidebar-text">리소스 대장</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월별 비용대장</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ── AI 라이선스 관리 그룹 ── -->
+    <div class="nav-group" data-group="ai_license">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" onclick="toggleNavGroup('ai_license')">
+        <i class="fas fa-robot w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">AI 라이선스</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-licenses"><i class="fas fa-id-card w-4 text-center flex-shrink-0"></i><span class="sidebar-text">라이선스 현황</span></a></li>
+      </ul>
+    </div>
+
+    <!-- ── 관리자 콘솔 (admin 전용) ── -->
+    <div class="nav-group admin-only hidden" data-group="admin">
+      <button class="nav-group-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-yellow-300 hover:bg-yellow-900/30" onclick="toggleNavGroup('admin')">
+        <i class="fas fa-user-shield w-5 text-center text-lg flex-shrink-0"></i>
+        <span class="sidebar-text flex-1 text-left">관리자 콘솔</span>
+        <i class="nav-group-arrow fas fa-chevron-right text-xs text-yellow-400 transition-transform duration-200 sidebar-text"></i>
+      </button>
+      <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-yellow-200 hover:bg-yellow-900/30" data-page="admin-users"><i class="fas fa-users-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">계정 관리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-yellow-200 hover:bg-yellow-900/30" data-page="admin-categories"><i class="fas fa-tags w-4 text-center flex-shrink-0"></i><span class="sidebar-text">카테고리 관리</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-yellow-200 hover:bg-yellow-900/30" data-page="admin-logs"><i class="fas fa-clipboard-list w-4 text-center flex-shrink-0"></i><span class="sidebar-text">접속 로그</span></a></li>
+      </ul>
+    </div>
+
+  </nav>
+
+  <!-- 사이드바 하단 사용자 정보 -->
+  <div class="p-4 border-t border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-user text-xs text-white"></i>
+      </div>
+      <div class="sidebar-text flex-1 min-w-0">
+        <div id="sidebarUserName" class="text-xs font-medium text-white truncate">-</div>
+        <div id="sidebarUserRole" class="text-xs text-blue-400">-</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ======= 메인 콘텐츠 ======= -->
+<div id="mainContent" class="main-content transition-all duration-300" style="margin-left:260px;">
+
+  <!-- 헤더 -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+    <div class="flex items-center justify-between px-6 py-3">
+      <div class="flex items-center gap-3">
+        <h1 id="pageTitle" class="text-lg font-bold text-gray-800">대시보드</h1>
+        <span id="pageBreadcrumb" class="text-sm text-gray-400 hidden md:inline">홈 / 대시보드</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- 사용자 정보 -->
+        <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+          <i class="fas fa-user-circle text-blue-500"></i>
+          <span id="headerUserName" class="text-sm font-medium text-gray-700">-</span>
+          <span id="headerUserRole" class="text-xs px-2 py-0.5 rounded-full font-semibold role-chip">-</span>
+        </div>
+        <button onclick="exportExcel()" class="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"><i class="fas fa-file-excel"></i><span class="hidden sm:inline">Excel</span></button>
+        <button onclick="openModal('registerModal')" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><i class="fas fa-plus"></i><span class="hidden sm:inline">자산 등록</span></button>
+        <button onclick="openModal('subRegisterModal')" class="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"><i class="fas fa-credit-card"></i><span class="hidden sm:inline">구독 등록</span></button>
+        <button onclick="AuthManager.logout()" class="flex items-center gap-1.5 px-3 py-2 bg-gray-200 text-gray-600 text-sm rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors" title="로그아웃">
+          <i class="fas fa-sign-out-alt"></i><span class="hidden sm:inline">로그아웃</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="p-4 md:p-6">
+
+    <!-- ===== 대시보드 ===== -->
+    <section id="page-dashboard" class="page-section">
+      <div class="flex gap-2 mb-5">
+        <button onclick="switchDashTab('asset')" id="dashTab-asset" class="dash-tab active-tab px-4 py-2 rounded-lg text-sm font-semibold">🖥️ 고정자산</button>
+        <button onclick="switchDashTab('sub')" id="dashTab-sub" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">💳 정기결제</button>
+        <button onclick="switchDashTab('promo')" id="dashTab-promo" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">🎁 판촉물</button>
+      </div>
+
+      <!-- 고정자산 대시보드 -->
+      <div id="dash-asset">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-laptop-code text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 자산</p><p id="stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-check-circle text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">사용 중</p><p id="stat-active" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-yellow-100 rounded-xl"><i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">반출/수리중</p><p id="stat-out" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-times-circle text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">폐기/매각</p><p id="stat-disposed" class="text-2xl font-bold text-gray-800">0</p></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-blue-500"></i>자산 상태별</h3><div style="height:220px;position:relative;"><canvas id="statusChart"></canvas></div></div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>자산 분류별</h3><div style="height:220px;position:relative;"><canvas id="categoryChart"></canvas></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-clock text-blue-500"></i>최근 변경 이력</h3><div id="recentHistory" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-shield-alt text-yellow-500"></i>보증 만료 임박 (90일)</h3><div id="warrantyAlert" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+        </div>
+      </div>
+
+      <!-- 정기결제 대시보드 -->
+      <div id="dash-sub" class="hidden">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-purple-100 rounded-xl"><i class="fas fa-credit-card text-purple-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 구독</p><p id="sub-stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-won-sign text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">월 총 비용</p><p id="sub-stat-monthly" class="text-xl font-bold text-gray-800">-</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-calendar-check text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">연 총 비용</p><p id="sub-stat-annual" class="text-xl font-bold text-gray-800">-</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-bell text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">30일내 갱신</p><p id="sub-stat-renewal" class="text-2xl font-bold text-gray-800">0</p></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-purple-500"></i>카테고리별 월 비용</h3><div style="height:220px;position:relative;"><canvas id="subCategoryChart"></canvas></div></div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-purple-500"></i>결제 주기별 현황</h3><div style="height:220px;position:relative;"><canvas id="subCycleChart"></canvas></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i>30일 이내 갱신 예정</h3><div id="dashRenewalList" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-list text-purple-500"></i>최근 등록 구독</h3><div id="dashRecentSubs" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+        </div>
+      </div>
+
+      <!-- 판촉물 대시보드 -->
+      <div id="dash-promo" class="hidden">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-orange-100 rounded-xl"><i class="fas fa-gift text-orange-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 품목</p><p id="promo-stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-check-circle text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">정상 재고</p><p id="promo-stat-ok" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">재고 부족</p><p id="promo-stat-low" class="text-2xl font-bold text-gray-800">0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-boxes text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 재고 금액</p><p id="promo-stat-value" class="text-lg font-bold text-gray-800">-</p></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-orange-500"></i>분류별 재고 현황</h3><div style="height:220px;position:relative;"><canvas id="promoCategoryChart"></canvas></div></div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i>재고 부족 품목</h3><div id="promoLowStock" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 자산 대장 ===== -->
+    <section id="page-assets" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="searchInput" placeholder="자산번호, 장비명, 시리얼, CPU, 사용자..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"/></div></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">분류</label><select id="filterCategory" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>PC/노트북</option><option>모니터</option><option>서버</option><option>네트워크장비</option><option>프린터/복합기</option><option>저장장치</option><option>주변기기</option><option>기타</option></select></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="filterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>입고</option><option>사용중</option><option>반출</option><option>반납</option><option>수리중</option><option>폐기</option><option>매각</option></select></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">부서</label><select id="filterDept" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option></select></div>
+          <button onclick="applyFilter()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+          <button onclick="resetFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="assetCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="exportExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <tr>
+                <th class="px-3 py-3 text-left">자산번호</th><th class="px-3 py-3 text-left">분류</th>
+                <th class="px-3 py-3 text-left">장비명/모델</th><th class="px-3 py-3 text-left">CPU</th>
+                <th class="px-3 py-3 text-left">MEM</th><th class="px-3 py-3 text-left">SSD</th>
+                <th class="px-3 py-3 text-left">시리얼</th><th class="px-3 py-3 text-left">사용자/부서</th>
+                <th class="px-3 py-3 text-left">상태</th><th class="px-3 py-3 text-left">구매일</th>
+                <th class="px-3 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="assetTableBody"><tr><td colspan="11" class="text-center py-16 text-gray-400"><i class="fas fa-laptop text-4xl block mb-3 opacity-20"></i>등록된 자산이 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+          <span id="pageInfo" class="text-xs text-gray-500">1 / 1 페이지</span>
+          <div class="flex gap-1" id="pagination"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 반출/반납/수리/폐기/이력/보증 ===== -->
+    <section id="page-checkout" class="page-section hidden"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="px-5 py-4 border-b border-gray-100 bg-orange-50"><h3 class="text-sm font-bold text-orange-700 flex items-center gap-2"><i class="fas fa-sign-out-alt"></i>현재 반출 중인 자산</h3></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">CPU/MEM/SSD</th><th class="px-4 py-3 text-left">사용자</th><th class="px-4 py-3 text-left">부서</th><th class="px-4 py-3 text-left">위치/목적</th><th class="px-4 py-3 text-center">반납 처리</th></tr></thead><tbody id="checkoutTableBody"></tbody></table></div></div></section>
+
+    <section id="page-return" class="page-section hidden"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="px-5 py-4 border-b border-gray-100 bg-blue-50"><h3 class="text-sm font-bold text-blue-700 flex items-center gap-2"><i class="fas fa-sign-in-alt"></i>창고 반납 자산</h3></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">CPU/MEM/SSD</th><th class="px-4 py-3 text-left">제조사/모델</th><th class="px-4 py-3 text-left">비고</th><th class="px-4 py-3 text-center">재배출/처리</th></tr></thead><tbody id="returnTableBody"></tbody></table></div></div></section>
+
+    <section id="page-repair" class="page-section hidden"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="px-5 py-4 border-b border-gray-100 bg-yellow-50"><h3 class="text-sm font-bold text-yellow-700 flex items-center gap-2"><i class="fas fa-tools"></i>수리 중인 자산</h3></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">CPU/MEM/SSD</th><th class="px-4 py-3 text-left">제조사/모델</th><th class="px-4 py-3 text-left">비고</th><th class="px-4 py-3 text-center">수리완료</th></tr></thead><tbody id="repairTableBody"></tbody></table></div></div></section>
+
+    <section id="page-dispose" class="page-section hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="px-5 py-4 border-b border-gray-100 bg-red-50"><h3 class="text-sm font-bold text-red-700 flex items-center gap-2"><i class="fas fa-trash-alt"></i>폐기/매각 처리 대상</h3></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">사양</th><th class="px-4 py-3 text-left">구매금액</th><th class="px-4 py-3 text-center">처리</th></tr></thead><tbody id="disposeTableBody"></tbody></table></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="px-5 py-4 border-b border-gray-100 bg-gray-50"><h3 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-check-double"></i>처리 완료</h3></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">상태</th><th class="px-4 py-3 text-left">비고</th></tr></thead><tbody id="disposedTableBody"></tbody></table></div></div>
+      </div>
+    </section>
+
+    <section id="page-history" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><input type="text" id="historySearch" placeholder="자산번호, 사용자명..." class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">행위유형</label><select id="historyActionFilter" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>입고</option><option>반출</option><option>반납</option><option>수리의뢰</option><option>수리완료</option><option>폐기</option><option>매각</option></select></div>
+          <button onclick="loadHistory()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">처리일자</th><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">행위유형</th><th class="px-4 py-3 text-left">변경전</th><th class="px-4 py-3 text-left">변경후</th><th class="px-4 py-3 text-left">부서/사용자</th><th class="px-4 py-3 text-left">처리자</th><th class="px-4 py-3 text-left">내용</th></tr></thead><tbody id="historyTableBody"></tbody></table></div></div>
+    </section>
+
+    <section id="page-warranty" class="page-section hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-red-700 mb-1 flex items-center gap-2"><i class="fas fa-exclamation-circle"></i>이미 만료</h4><p id="warranty-expired-count" class="text-3xl font-bold text-red-600">0</p></div>
+        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-orange-700 mb-1 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i>30일 이내</h4><p id="warranty-30d-count" class="text-3xl font-bold text-orange-600">0</p></div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-yellow-700 mb-1 flex items-center gap-2"><i class="fas fa-clock"></i>90일 이내</h4><p id="warranty-90d-count" class="text-3xl font-bold text-yellow-600">0</p></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">자산번호</th><th class="px-4 py-3 text-left">장비명</th><th class="px-4 py-3 text-left">CPU/MEM/SSD</th><th class="px-4 py-3 text-left">사용자/부서</th><th class="px-4 py-3 text-left">보증만료일</th><th class="px-4 py-3 text-left">잔여일수</th><th class="px-4 py-3 text-left">상태</th></tr></thead><tbody id="warrantyTableBody"></tbody></table></div></div>
+    </section>
+
+    <!-- ===== IT 정기결제 페이지들 ===== -->
+    <section id="page-sub-list" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="subSearchInput" placeholder="서비스명, 벤더, 담당자..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"/></div></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">카테고리</label><select id="subFilterCategory" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option>클라우드/인프라</option><option>SaaS/협업</option><option>보안</option><option>개발도구</option><option>도메인/DNS</option><option>라이선스/OS</option><option>AI/데이터</option><option>기타</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">결제주기</label><select id="subFilterCycle" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option>월간</option><option>연간</option><option>분기</option><option>일회성</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="subFilterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option>활성</option><option>일시정지</option><option>해지</option><option>갱신검토</option><option>만료임박</option></select></div>
+          <button onclick="applySubFilter()" class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+          <button onclick="resetSubFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+        </div>
+      </div>
+      <div id="subCostSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100"><span id="subCount" class="text-sm font-semibold text-gray-700">전체 0건</span><div class="flex gap-2"><button onclick="exportSubExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button><button onclick="openModal('subRegisterModal')" class="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 flex items-center gap-1"><i class="fas fa-plus"></i>등록</button></div></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide"><tr><th class="px-4 py-3 text-left">서비스명</th><th class="px-4 py-3 text-left">카테고리</th><th class="px-4 py-3 text-left">벤더</th><th class="px-4 py-3 text-left">결제주기</th><th class="px-4 py-3 text-right">단가/통화</th><th class="px-4 py-3 text-right">월 환산(원)</th><th class="px-4 py-3 text-left">결제수단</th><th class="px-4 py-3 text-left">담당자</th><th class="px-4 py-3 text-left">갱신일</th><th class="px-4 py-3 text-left">상태</th><th class="px-4 py-3 text-center">관리</th></tr></thead><tbody id="subTableBody"><tr><td colspan="11" class="text-center py-16 text-gray-400"><i class="fas fa-credit-card text-4xl block mb-3 opacity-20"></i>등록된 구독 없음</td></tr></tbody></table></div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-gray-100"><span id="subPageInfo" class="text-xs text-gray-500">1 / 1 페이지</span><div class="flex gap-1" id="subPagination"></div></div>
+      </div>
+    </section>
+
+    <section id="page-sub-renewal" class="page-section hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-red-700 mb-1 flex items-center gap-2"><i class="fas fa-exclamation-circle"></i>이미 만료</h4><p id="renewal-expired-count" class="text-3xl font-bold text-red-600">0</p></div>
+        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-orange-700 mb-1 flex items-center gap-2"><i class="fas fa-bell"></i>30일 이내 갱신</h4><p id="renewal-30d-count" class="text-3xl font-bold text-orange-600">0</p></div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-5"><h4 class="text-sm font-bold text-yellow-700 mb-1 flex items-center gap-2"><i class="fas fa-clock"></i>90일 이내 갱신</h4><p id="renewal-90d-count" class="text-3xl font-bold text-yellow-600">0</p></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">서비스명</th><th class="px-4 py-3 text-left">카테고리</th><th class="px-4 py-3 text-left">담당자</th><th class="px-4 py-3 text-right">연간 비용</th><th class="px-4 py-3 text-left">갱신일</th><th class="px-4 py-3 text-left">잔여일</th><th class="px-4 py-3 text-left">자동갱신</th><th class="px-4 py-3 text-center">처리</th></tr></thead><tbody id="renewalTableBody"></tbody></table></div></div>
+    </section>
+
+    <section id="page-sub-cost" class="page-section hidden">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 font-medium mb-1">활성 서비스 월 비용</p><p id="cost-monthly" class="text-2xl font-bold text-purple-700">-</p></div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 font-medium mb-1">활성 서비스 연간 비용</p><p id="cost-annual" class="text-2xl font-bold text-blue-700">-</p></div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-xs text-gray-500 font-medium mb-1">활성 서비스 수</p><p id="cost-count" class="text-2xl font-bold text-green-700">-</p></div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-purple-500"></i>카테고리별 월 비용</h3><div style="height:260px;position:relative;"><canvas id="costCategoryChart"></canvas></div></div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-purple-500"></i>결제 주기별 연간 비용</h3><div style="height:260px;position:relative;"><canvas id="costCycleChart"></canvas></div></div>
+      </div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-sort-amount-down text-purple-500"></i>서비스별 연간 비용 TOP 10</h3><div id="costTopList" class="space-y-2"></div></div>
+    </section>
+
+    <!-- ===== 판촉물 재고 현황 ===== -->
+    <section id="page-promo-stock" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="promoSearchInput" placeholder="품명, 코드, 담당자..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-orange-500"/></div></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">분류</label><select id="promoFilterCategory" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-orange-500"><option value="">전체</option><option>인쇄물</option><option>기념품</option><option>의류/폼리용품</option><option>생활용품</option><option>전자제품</option><option>식품/음료</option><option>기타</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="promoFilterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-orange-500"><option value="">전체</option><option>정상</option><option>재고부족</option><option>중단</option></select></div>
+          <button onclick="applyPromoFilter()" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+          <button onclick="resetPromoFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="promoStockCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <div class="flex gap-2">
+            <button onclick="exportPromoExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+            <button onclick="navigateTo('promo-in'); setTimeout(()=>switchPromoInTab('new'),100)" class="text-xs px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 flex items-center gap-1"><i class="fas fa-plus"></i>품목 등록</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide"><tr>
+              <th class="px-4 py-3 text-left">품목 코드</th><th class="px-4 py-3 text-left">판촉물명</th>
+              <th class="px-4 py-3 text-left">분류</th><th class="px-4 py-3 text-left">규격</th>
+              <th class="px-4 py-3 text-right">입고 누계</th><th class="px-4 py-3 text-right">출고 누계</th>
+              <th class="px-4 py-3 text-right">현재 재고</th><th class="px-4 py-3 text-right">안전재고</th>
+              <th class="px-4 py-3 text-right">단가</th><th class="px-4 py-3 text-left">담당자</th>
+              <th class="px-4 py-3 text-left">상태</th><th class="px-4 py-3 text-center">관리</th>
+            </tr></thead>
+            <tbody id="promoStockTableBody"><tr><td colspan="12" class="text-center py-16 text-gray-400"><i class="fas fa-gift text-4xl block mb-3 opacity-20"></i>등록된 판촉물이 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 판촉물 입고 처리 ===== -->
+    <section id="page-promo-in" class="page-section hidden">
+      <div class="max-w-3xl mx-auto space-y-5">
+
+        <!-- 탭 전환 -->
+        <div class="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+          <button id="promoInTab-existing" onclick="switchPromoInTab('existing')"
+            class="px-5 py-2 text-sm font-semibold rounded-lg bg-white text-green-700 shadow-sm transition-all">
+            <i class="fas fa-boxes mr-1.5"></i>기존 품목 입고
+          </button>
+          <button id="promoInTab-new" onclick="switchPromoInTab('new')"
+            class="px-5 py-2 text-sm font-semibold rounded-lg text-gray-500 hover:text-gray-700 transition-all">
+            <i class="fas fa-plus-circle mr-1.5"></i>신규 품목 등록 + 입고
+          </button>
+        </div>
+
+        <!-- ── 기존 품목 입고 패널 ── -->
+        <div id="promoInPanel-existing">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-green-50">
+              <h3 class="text-sm font-bold text-green-700 flex items-center gap-2">
+                <i class="fas fa-arrow-circle-down text-xl"></i>기존 품목 입고 처리
+              </h3>
+              <p class="text-xs text-green-600 mt-1">재고 현황에서 품목을 선택하여 입고 수량을 추가합니다.</p>
+            </div>
+
+            <!-- 품목 검색 카드 -->
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="form-label">품목 검색</label>
+                <div class="relative">
+                  <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                  <input type="text" id="promoInSearchInput" placeholder="품명 또는 코드로 검색..." 
+                    class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                    oninput="filterPromoInList()"/>
+                </div>
+              </div>
+
+              <!-- 품목 목록 (라디오 선택) -->
+              <div id="promoInItemList" class="border border-gray-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+                <div class="text-center py-8 text-gray-400 text-sm"><i class="fas fa-arrow-up block text-2xl mb-2 opacity-30"></i>위에서 품목을 검색하세요</div>
+              </div>
+              <div id="promoInCurrentStock" class="hidden p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold flex items-center gap-2">
+                <i class="fas fa-info-circle"></i><span id="promoInCurrentStockText"></span>
+              </div>
+            </div>
+
+            <div class="px-6 pb-6 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div><label class="form-label">입고 수량 *</label><input type="number" id="promoInQty" min="1" class="form-input" placeholder="입고 수량 입력"/></div>
+                <div><label class="form-label">입고 일자 *</label><input type="date" id="promoInDate" class="form-input"/></div>
+              </div>
+              <div><label class="form-label">공급처/구매처</label><input type="text" id="promoInTarget" class="form-input" placeholder="공급처명"/></div>
+              <div><label class="form-label">담당자</label><input type="text" id="promoInHandler" class="form-input" placeholder="처리 담당자"/></div>
+              <div><label class="form-label">비고</label><textarea id="promoInNote" rows="2" class="form-input resize-none" placeholder="메모 (선택)"></textarea></div>
+              <input type="hidden" id="promoInItem" value=""/>
+              <button onclick="processPromoIn()" class="w-full py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                <i class="fas fa-check"></i>입고 처리
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 신규 품목 등록 + 입고 패널 ── -->
+        <div id="promoInPanel-new" class="hidden">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-orange-50">
+              <h3 class="text-sm font-bold text-orange-700 flex items-center gap-2">
+                <i class="fas fa-plus-circle text-xl"></i>신규 판촉물 품목 등록 + 입고
+              </h3>
+              <p class="text-xs text-orange-600 mt-1">새로운 판촉물을 등록하면서 동시에 초기 재고를 입고 처리합니다.</p>
+            </div>
+            <form class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="hidden" id="editPromoId" value=""/>
+              <div><label class="form-label">품목 코드 *</label><input type="text" id="pf_promo_code" placeholder="예: PRO-2025-001" class="form-input" required/></div>
+              <div><label class="form-label">판촉물명 *</label><input type="text" id="pf_promo_name" placeholder="판촉물 이름" class="form-input" required/></div>
+              <div><label class="form-label">분류 *</label>
+                <select id="pf_category" class="form-input" required>
+                  <option value="">선택하세요</option>
+                  <option>인쇄물</option><option>기념품</option><option>의류/폼리용품</option>
+                  <option>생활용품</option><option>전자제품</option><option>식품/음료</option><option>기타</option>
+                </select>
+              </div>
+              <div><label class="form-label">규격/사이즈</label><input type="text" id="pf_spec" placeholder="예: A4, L사이즈, 500ml" class="form-input"/></div>
+              <div><label class="form-label">단가(원)</label><input type="number" id="pf_unit_price" placeholder="개당 단가" class="form-input"/></div>
+              <div><label class="form-label">안전재고</label><input type="number" id="pf_stock_min" placeholder="최소 유지 수량" class="form-input" value="10"/></div>
+              <div><label class="form-label">초기 입고 수량 *</label><input type="number" id="pf_init_stock" placeholder="이번에 입고되는 수량" class="form-input" value="0" min="0"/></div>
+              <div><label class="form-label">입고 일자 *</label><input type="date" id="pf_in_date" class="form-input"/></div>
+              <div><label class="form-label">보관 위치</label><input type="text" id="pf_location" placeholder="창고 위치/선반번호" class="form-input"/></div>
+              <div><label class="form-label">담당 부서</label><input type="text" id="pf_department" placeholder="담당 부서" class="form-input"/></div>
+              <div><label class="form-label">담당자</label><input type="text" id="pf_manager" placeholder="담당자명" class="form-input"/></div>
+              <div><label class="form-label">공급처/구매처</label><input type="text" id="pf_supplier" placeholder="공급처명" class="form-input"/></div>
+              <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="pf_note" rows="2" class="form-input resize-none"></textarea></div>
+            </form>
+            <div class="flex justify-end gap-2 px-6 pb-6 border-t border-gray-100 pt-4">
+              <button onclick="savePromoItem()" class="px-6 py-2.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 font-medium flex items-center gap-1.5">
+                <i class="fas fa-save"></i>품목 등록 + 입고
+              </button>
+              <button onclick="resetPromoItemForm()" class="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">초기화</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== 판촉물 출고 처리 ===== -->
+    <section id="page-promo-out" class="page-section hidden">
+      <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-orange-50">
+            <h3 class="text-sm font-bold text-orange-700 flex items-center gap-2"><i class="fas fa-arrow-circle-up text-xl"></i>판촉물 출고 처리</h3>
+          </div>
+          <div class="p-6 space-y-4">
+            <div><label class="form-label">판촉물 선택 *</label><select id="promoOutItem" class="form-input"><option value="">-- 판촉물을 선택하세요 --</option></select></div>
+            <div id="promoOutCurrentStock" class="hidden p-3 bg-orange-50 border border-orange-100 rounded-xl text-sm text-orange-700 font-medium"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="form-label">출고 수량 *</label><input type="number" id="promoOutQty" min="1" class="form-input" placeholder="출고 수량 입력"/></div>
+              <div><label class="form-label">출고 일자 *</label><input type="date" id="promoOutDate" class="form-input"/></div>
+            </div>
+            <div><label class="form-label">출고 대상 (고객사/행사명) *</label><input type="text" id="promoOutTarget" class="form-input" placeholder="예: OO고객사, 2025 전시회"/></div>
+            <div><label class="form-label">출고 목적/사유</label><input type="text" id="promoOutPurpose" class="form-input" placeholder="예: 고객 방문 선물, 마케팅 행사"/></div>
+            <div><label class="form-label">담당자</label><input type="text" id="promoOutHandler" class="form-input" placeholder="처리 담당자"/></div>
+            <div><label class="form-label">비고</label><textarea id="promoOutNote" rows="2" class="form-input resize-none" placeholder="메모 (선택)"></textarea></div>
+            <button onclick="processPromoOut()" class="w-full py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"><i class="fas fa-check"></i>출고 처리</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 판촉물 입출고 이력 ===== -->
+    <section id="page-promo-history" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><input type="text" id="promoHistSearch" placeholder="품명, 코드, 대상, 담당자..." class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-orange-500"/></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">구분</label><select id="promoHistType" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-orange-500"><option value="">전체</option><option>입고</option><option>출고</option><option>수량조정</option><option>폐기</option></select></div>
+          <button onclick="loadPromoHistory()" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase"><tr><th class="px-4 py-3 text-left">처리일자</th><th class="px-4 py-3 text-left">품목코드</th><th class="px-4 py-3 text-left">판촉물명</th><th class="px-4 py-3 text-left">구분</th><th class="px-4 py-3 text-right">수량</th><th class="px-4 py-3 text-right">이전재고</th><th class="px-4 py-3 text-right">이후재고</th><th class="px-4 py-3 text-left">대상/고객사</th><th class="px-4 py-3 text-left">목적/사유</th><th class="px-4 py-3 text-left">담당자</th></tr></thead><tbody id="promoHistTableBody"></tbody></table></div></div>
+    </section>
+
+    <!-- ========================================
+         Azure 관리
+    ========================================= -->
+
+    <!-- ===== Azure 비용 대시보드 ===== -->
+    <section id="page-azure-dashboard" class="page-section hidden">
+      <!-- 요약 카드 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-500">이번달 총 비용</span>
+            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-dollar-sign text-blue-600 text-sm"></i></div>
+          </div>
+          <div id="az-stat-total-cost" class="text-2xl font-bold text-gray-800">-</div>
+          <div id="az-stat-total-usd" class="text-xs text-gray-400 mt-1">USD -</div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-500">리소스 수</span>
+            <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center"><i class="fas fa-server text-indigo-600 text-sm"></i></div>
+          </div>
+          <div id="az-stat-resources" class="text-2xl font-bold text-gray-800">-</div>
+          <div id="az-stat-resources-running" class="text-xs text-gray-400 mt-1">Running -개</div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-500">라이선스</span>
+            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-id-card text-purple-600 text-sm"></i></div>
+          </div>
+          <div id="az-stat-licenses" class="text-2xl font-bold text-gray-800">-</div>
+          <div id="az-stat-licenses-used" class="text-xs text-gray-400 mt-1">사용 시트 -개</div>
+        </div>
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-500">월 예산 대비</span>
+            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-percentage text-green-600 text-sm"></i></div>
+          </div>
+          <div id="az-stat-budget-pct" class="text-2xl font-bold text-gray-800">- %</div>
+          <div id="az-stat-budget-remain" class="text-xs text-gray-400 mt-1">잔여 예산 -</div>
+        </div>
+      </div>
+
+      <!-- 차트 영역 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>서비스별 비용 분포</h3>
+          <div style="height:260px;"><canvas id="azureCostByServiceChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-donut text-indigo-500"></i>리소스 타입별 현황</h3>
+          <div style="height:260px;"><canvas id="azureResourceTypeChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 최근 비용 내역 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-history text-gray-400"></i>최근 비용 입력 내역</h3>
+          <button onclick="navigateTo('azure-costs')" class="text-xs text-blue-500 hover:underline">전체 보기 →</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+              <tr><th class="px-4 py-3 text-left">기간</th><th class="px-4 py-3 text-left">서비스</th><th class="px-4 py-3 text-left">카테고리</th><th class="px-4 py-3 text-right">비용(USD)</th><th class="px-4 py-3 text-right">비용(KRW)</th></tr>
+            </thead>
+            <tbody id="azureRecentCostBody"><tr><td colspan="5" class="text-center py-10 text-gray-400">데이터가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Azure 리소스 대장 ===== -->
+    <section id="page-azure-resources" class="page-section hidden">
+      <!-- 필터 바 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48">
+            <label class="text-xs font-semibold text-gray-600 block mb-1">검색</label>
+            <div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <input type="text" id="azResSearch" placeholder="리소스명, 그룹, 담당자..." class="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
+          </div>
+          <div class="min-w-44"><label class="text-xs font-semibold text-gray-600 block mb-1">서비스 구분</label><select id="azResFilterService" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option value="Azure">Azure</option><option value="Claude">Claude</option><option value="GoWorks">GoWorks</option><option value="SendGrid">SendGrid</option><option value="AzureFabric">Azure Fabric</option><option value="DataPortal">DataPortal</option><option value="기타">기타</option></select></div>
+          <div class="min-w-36"><label class="text-xs font-semibold text-gray-600 block mb-1">타입</label><select id="azResFilterType" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Virtual Machine</option><option>App Service</option><option>SQL Database</option><option>Storage Account</option><option>Key Vault</option><option>Container Registry</option><option>AKS</option><option>Function App</option><option>OpenAI</option><option>기타</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">환경</label><select id="azResFilterEnv" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Production</option><option>Staging</option><option>Development</option><option>Test</option><option>Demo</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="azResFilterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Running</option><option>Stopped</option><option>Deallocated</option></select></div>
+          <button onclick="applyAzureResFilter()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+          <button onclick="resetAzureResFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+        </div>
+      </div>
+      <!-- 테이블 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="azResCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <div class="flex gap-2">
+            <button onclick="exportAzureResExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+            <button onclick="openAzureResModal()" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 flex items-center gap-1"><i class="fas fa-plus"></i>리소스 등록</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">리소스명</th>
+                <th class="px-4 py-3 text-left">서비스 구분</th>
+                <th class="px-4 py-3 text-left">타입</th>
+                <th class="px-4 py-3 text-left">환경</th>
+                <th class="px-4 py-3 text-left">리전</th>
+                <th class="px-4 py-3 text-left">리소스 그룹</th>
+                <th class="px-4 py-3 text-left">SKU</th>
+                <th class="px-4 py-3 text-right">월 비용(USD)</th>
+                <th class="px-4 py-3 text-right">월 비용(KRW)</th>
+                <th class="px-4 py-3 text-left">담당자</th>
+                <th class="px-4 py-3 text-center">상태</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="azResTableBody"><tr><td colspan="12" class="text-center py-16 text-gray-400"><i class="fab fa-microsoft text-4xl block mb-3 opacity-20"></i>등록된 리소스가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 라이선스 관리 (독립 메뉴) ===== -->
+    <section id="page-ai-licenses" class="page-section hidden">
+      <div class="bg-violet-50 border border-violet-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+        <i class="fas fa-robot text-violet-500 text-2xl"></i>
+        <div>
+          <div class="font-semibold text-violet-800 text-sm">AI 라이선스 관리</div>
+          <div class="text-xs text-violet-600 mt-0.5">ChatGPT, Claude, GitHub Copilot 등 AI 도구 라이선스 현황을 통합 관리합니다.</div>
+        </div>
+      </div>
+      <div id="azLicSummary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5"></div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="azLicCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="openAzureLicModal()" class="text-xs px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 flex items-center gap-1 border border-violet-200"><i class="fas fa-plus"></i>라이선스 등록</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">제품명</th>
+                <th class="px-4 py-3 text-left">AI 서비스</th>
+                <th class="px-4 py-3 text-left">플랜</th>
+                <th class="px-4 py-3 text-center">총 시트</th>
+                <th class="px-4 py-3 text-center">사용 시트</th>
+                <th class="px-4 py-3 text-center">잔여</th>
+                <th class="px-4 py-3 text-right">단가(KRW/월)</th>
+                <th class="px-4 py-3 text-right">월 총액(KRW)</th>
+                <th class="px-4 py-3 text-left">계약 만료</th>
+                <th class="px-4 py-3 text-left">담당자</th>
+                <th class="px-4 py-3 text-center">상태</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="azLicTableBody"><tr><td colspan="12" class="text-center py-16 text-gray-400"><i class="fas fa-robot text-4xl block mb-3 opacity-20"></i>등록된 AI 라이선스가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Azure 비용 입력 ===== -->
+    <section id="page-azure-costs" class="page-section hidden">
+      <!-- 필터 바 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <!-- 기간 범위: 시작월 ~ 종료월 -->
+          <div class="flex items-end gap-1.5">
+            <div>
+              <label class="text-xs font-semibold text-gray-600 block mb-1">시작 월</label>
+              <input type="month" id="azCostFilterFrom" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            </div>
+            <span class="pb-2 text-gray-400 font-semibold text-sm">~</span>
+            <div>
+              <label class="text-xs font-semibold text-gray-600 block mb-1">종료 월</label>
+              <input type="month" id="azCostFilterTo" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            </div>
+          </div>
+          <!-- 서비스 구분 -->
+          <div class="min-w-40">
+            <label class="text-xs font-semibold text-gray-600 block mb-1">서비스 구분</label>
+            <select id="azCostFilterService" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">전체</option>
+              <option value="Azure">Azure</option>
+              <option value="Claude">Claude</option>
+              <option value="GoWorks">GoWorks</option>
+              <option value="SendGrid">SendGrid</option>
+              <option value="AzureFabric">Azure Fabric</option>
+              <option value="DataPortal">DataPortal</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <!-- 카테고리 -->
+          <div class="min-w-32">
+            <label class="text-xs font-semibold text-gray-600 block mb-1">카테고리</label>
+            <select id="azCostFilterCat" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">전체</option><option>Compute</option><option>Storage</option><option>Network</option>
+              <option>Database</option><option>AI/ML</option><option>Security</option><option>License</option><option>기타</option>
+            </select>
+          </div>
+          <div class="flex gap-2 pb-0">
+            <button onclick="loadAzureCosts()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+            <button onclick="resetAzureCostFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+          </div>
+          <div class="ml-auto">
+            <button onclick="openAzureCostModal()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5 font-medium"><i class="fas fa-plus"></i>비용 등록</button>
+          </div>
+        </div>
+        <!-- 조회 기간 표시 -->
+        <div id="azCostPeriodLabel" class="mt-2 text-xs text-gray-400 hidden">
+          <i class="fas fa-calendar-alt mr-1 text-blue-400"></i><span id="azCostPeriodText"></span>
+        </div>
+      </div>
+      <!-- 합계 카드 -->
+      <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100"><div class="text-xs text-blue-600 font-semibold mb-1">기간 내 총 비용(USD)</div><div id="azCostSumUsd" class="text-xl font-bold text-blue-800">$0</div></div>
+        <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100"><div class="text-xs text-indigo-600 font-semibold mb-1">기간 내 총 비용(KRW)</div><div id="azCostSumKrw" class="text-xl font-bold text-indigo-800">₩0</div></div>
+        <div class="bg-green-50 rounded-xl p-4 border border-green-100"><div class="text-xs text-green-600 font-semibold mb-1">기간 내 예산(KRW)</div><div id="azCostSumBudget" class="text-xl font-bold text-green-800">₩0</div></div>
+      </div>
+      <!-- 테이블 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="azCostCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="exportAzureCostExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">기간</th>
+                <th class="px-4 py-3 text-left">서비스 구분</th>
+                <th class="px-4 py-3 text-left">서비스명</th>
+                <th class="px-4 py-3 text-left">카테고리</th>
+                <th class="px-4 py-3 text-right">비용(USD)</th>
+                <th class="px-4 py-3 text-right">비용(KRW)</th>
+                <th class="px-4 py-3 text-right">예산(KRW)</th>
+                <th class="px-4 py-3 text-right">초과</th>
+                <th class="px-4 py-3 text-left">구독</th>
+                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="azCostTableBody"><tr><td colspan="11" class="text-center py-16 text-gray-400"><i class="fas fa-file-invoice-dollar text-4xl block mb-3 opacity-20"></i>비용 데이터가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================
+         관리자 콘솔
+    ========================================= -->
+
+    <!-- ===== 카테고리 관리 (admin) ===== -->
+    <section id="page-admin-categories" class="page-section hidden">
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+        <i class="fas fa-tags text-amber-500 text-xl"></i>
+        <div>
+          <div class="font-semibold text-amber-800 text-sm">카테고리 관리</div>
+          <div class="text-xs text-amber-700 mt-0.5">각 메뉴에서 사용되는 분류 항목을 추가·수정·삭제할 수 있습니다. 변경사항은 즉시 드롭다운에 반영됩니다.</div>
+        </div>
+      </div>
+      <!-- 메뉴 탭 -->
+      <div class="flex gap-2 mb-5 flex-wrap">
+        <button onclick="switchCatTab('assets')" id="catTab-assets" class="cat-tab active-cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🖥️ 고정자산</button>
+        <button onclick="switchCatTab('sub')" id="catTab-sub" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">💳 IT정기결제</button>
+        <button onclick="switchCatTab('promo')" id="catTab-promo" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🎁 판촉물</button>
+        <button onclick="switchCatTab('azure')" id="catTab-azure" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">☁️ Azure 서비스구분</button>
+        <button onclick="switchCatTab('ai_license')" id="catTab-ai_license" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🤖 AI 라이선스</button>
+      </div>
+      <!-- 카테고리 테이블 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-amber-50">
+          <span id="catGroupLabel" class="text-sm font-bold text-amber-800">고정자산 분류</span>
+          <button onclick="openCatModal()" class="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-1 font-medium"><i class="fas fa-plus"></i>항목 추가</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-center w-16">순서</th>
+                <th class="px-4 py-3 text-left">표시명</th>
+                <th class="px-4 py-3 text-left">값(value)</th>
+                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-center">활성</th>
+                <th class="px-4 py-3 text-center w-24">관리</th>
+              </tr>
+            </thead>
+            <tbody id="catTableBody"><tr><td colspan="6" class="text-center py-12 text-gray-400">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 계정 관리 ===== -->
+    <section id="page-admin-users" class="page-section hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-yellow-50">
+          <h2 class="text-sm font-bold text-yellow-800 flex items-center gap-2"><i class="fas fa-users-cog text-yellow-600"></i>시스템 계정 관리</h2>
+          <div class="flex gap-2">
+            <button onclick="openCreateUserModal()" class="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1 font-medium"><i class="fas fa-user-plus"></i>사용자 추가</button>
+            <button onclick="loadAdminUsers()" class="text-xs px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 flex items-center gap-1"><i class="fas fa-sync"></i>새로고침</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">이름</th>
+                <th class="px-4 py-3 text-left">이메일</th>
+                <th class="px-4 py-3 text-center">역할</th>
+                <th class="px-4 py-3 text-left">부서</th>
+                <th class="px-4 py-3 text-center">상태</th>
+                <th class="px-4 py-3 text-left">가입일</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTableBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 접속 로그 ===== -->
+    <section id="page-admin-logs" class="page-section hidden">
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4 flex items-center gap-3">
+        <i class="fas fa-info-circle text-amber-500 text-xl"></i>
+        <div>
+          <div class="font-semibold text-amber-800 text-sm">접속 로그 안내</div>
+          <div class="text-xs text-amber-700 mt-0.5">현재 세션 기반 접속 현황을 표시합니다. 브라우저 세션이 종료되면 로그가 초기화됩니다.</div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 bg-yellow-50">
+          <h2 class="text-sm font-bold text-yellow-800 flex items-center gap-2"><i class="fas fa-clipboard-list text-yellow-600"></i>현재 세션 정보</h2>
+        </div>
+        <div id="adminLogsContent" class="p-6 space-y-3"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ========== 모달: Azure 리소스 등록/수정 ========== -->
+<div id="azureResModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="azureResModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fab fa-microsoft text-blue-500"></i>Azure 리소스 등록</h2>
+      <button onclick="closeModal('azureResModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="azResEditId"/>
+      <div class="md:col-span-2"><label class="form-label">리소스 이름 *</label><input type="text" id="azr_resource_name" placeholder="예: gowit-prod-api" class="form-input" required/></div>
+      <!-- 서비스 구분 -->
+      <div><label class="form-label">서비스 구분 *</label>
+        <select id="azr_service_group" class="form-input" required>
+          <option value="">선택하세요</option>
+          <option value="Azure">Azure (Microsoft 클라우드)</option>
+          <option value="Claude">Claude (AI Framework)</option>
+          <option value="GoWorks">GoWorks 개발/구독관리</option>
+          <option value="SendGrid">SendGrid 메일 서비스</option>
+          <option value="AzureFabric">Azure Fabric (학습/데모/개발)</option>
+          <option value="DataPortal">DataPortal (학습/데모/개발)</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      <div><label class="form-label">리소스 타입 *</label>
+        <select id="azr_resource_type" class="form-input" required>
+          <option value="">선택하세요</option>
+          <option>Virtual Machine</option><option>App Service</option><option>SQL Database</option>
+          <option>Storage Account</option><option>Key Vault</option><option>Container Registry</option>
+          <option>AKS</option><option>Function App</option><option>Logic App</option>
+          <option>API Management</option><option>Cognitive Service</option><option>OpenAI</option>
+          <option>CDN</option><option>DNS Zone</option><option>VNet</option><option>Load Balancer</option><option>기타</option>
+        </select>
+      </div>
+      <div><label class="form-label">환경</label>
+        <select id="azr_environment" class="form-input">
+          <option value="">선택</option><option>Production</option><option>Staging</option><option>Development</option><option>Test</option><option>Demo</option>
+        </select>
+      </div>
+      <div><label class="form-label">구독(Subscription)</label><input type="text" id="azr_subscription" placeholder="구독 이름" class="form-input"/></div>
+      <div><label class="form-label">리소스 그룹</label><input type="text" id="azr_resource_group" placeholder="rg-gowit-prod" class="form-input"/></div>
+      <div><label class="form-label">리전</label>
+        <select id="azr_region" class="form-input">
+          <option value="">선택</option><option>Korea Central</option><option>Korea South</option>
+          <option>East Asia</option><option>Southeast Asia</option><option>Japan East</option>
+          <option>West US</option><option>East US</option><option>West Europe</option><option>기타</option>
+        </select>
+      </div>
+      <div><label class="form-label">SKU/플랜</label><input type="text" id="azr_sku" placeholder="예: Standard_B2s, P1v3" class="form-input"/></div>
+      <div><label class="form-label">상태</label>
+        <select id="azr_status" class="form-input">
+          <option value="Running">Running</option><option value="Stopped">Stopped</option>
+          <option value="Deallocated">Deallocated</option><option value="Provisioning">Provisioning</option>
+        </select>
+      </div>
+      <div><label class="form-label">월 예상 비용(USD)</label><input type="number" id="azr_monthly_cost" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div><label class="form-label">월 예상 비용(KRW)</label><input type="number" id="azr_monthly_cost_krw" placeholder="0" class="form-input" min="0"/></div>
+      <div><label class="form-label">담당자</label><input type="text" id="azr_owner" class="form-input" placeholder="담당자명"/></div>
+      <div><label class="form-label">담당 부서</label><input type="text" id="azr_department" class="form-input" placeholder="부서명"/></div>
+      <div><label class="form-label">생성일</label><input type="date" id="azr_created_date" class="form-input"/></div>
+      <div><label class="form-label">최근 검토일</label><input type="date" id="azr_last_reviewed" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">용도/설명</label><textarea id="azr_purpose" rows="2" class="form-input resize-none" placeholder="예: GoWorks 구독 관리 API 서버, Production 환경"></textarea></div>
+      <div class="md:col-span-2"><label class="form-label">태그 (쉼표 구분)</label><input type="text" id="azr_tags" class="form-input" placeholder="예: prod, api, backend"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="azr_note" rows="2" class="form-input resize-none"></textarea></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAzureResource()" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('azureResModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 카테고리 추가/수정 ========== -->
+<div id="catModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="catModalTitle" class="text-base font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-tag text-amber-500"></i>항목 추가</h2>
+      <button onclick="closeModal('catModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="catEditId"/>
+      <input type="hidden" id="catEditGroup"/>
+      <div><label class="form-label">표시명 *</label><input type="text" id="cat_name" class="form-input" placeholder="예: PC/노트북"/></div>
+      <div><label class="form-label">값(value) *<span class="ml-1 text-gray-400 font-normal text-xs">— 드롭다운에 저장되는 실제 값</span></label><input type="text" id="cat_value" class="form-input" placeholder="예: PC노트북"/></div>
+      <div><label class="form-label">정렬 순서</label><input type="number" id="cat_sort" class="form-input" placeholder="1" min="1"/></div>
+      <div><label class="form-label">비고</label><input type="text" id="cat_note" class="form-input" placeholder="선택 사항"/></div>
+      <div class="flex items-center gap-3 pt-1">
+        <label class="form-label mb-0">활성화</label>
+        <label class="perm-toggle"><input type="checkbox" id="cat_active" checked/><span class="perm-slider"></span></label>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveCategoryItem()" class="px-5 py-2.5 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('catModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: AI 라이선스 등록/수정 ========== -->
+<div id="azureLicModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="azureLicModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-robot text-violet-500"></i>AI 라이선스 등록</h2>
+      <button onclick="closeModal('azureLicModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="azLicEditId"/>
+      <div class="md:col-span-2"><label class="form-label">제품명 *</label><input type="text" id="azl_license_name" placeholder="예: ChatGPT Team, GitHub Copilot Business" class="form-input" required/></div>
+      <div><label class="form-label">AI 서비스 구분</label>
+        <select id="azl_license_type" class="form-input">
+          <option value="">선택</option>
+          <option value="ChatGPT">ChatGPT (OpenAI)</option>
+          <option value="Claude">Claude (Anthropic)</option>
+          <option value="GithubCopilot">GitHub Copilot</option>
+          <option value="M365Copilot">Microsoft 365 Copilot</option>
+          <option value="AzureOpenAI">Azure OpenAI</option>
+          <option value="Gemini">Gemini (Google)</option>
+          <option value="기타AI">기타 AI 서비스</option>
+        </select>
+      </div>
+      <div><label class="form-label">플랜/SKU</label><input type="text" id="azl_plan" placeholder="예: Business Premium" class="form-input"/></div>
+      <div><label class="form-label">총 시트 수 *</label><input type="number" id="azl_total_seats" placeholder="0" class="form-input" min="0" required/></div>
+      <div><label class="form-label">사용 시트 수</label><input type="number" id="azl_used_seats" placeholder="0" class="form-input" min="0"/></div>
+      <div><label class="form-label">단가(USD/월/시트)</label><input type="number" id="azl_unit_price_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div><label class="form-label">단가(KRW/월/시트)</label><input type="number" id="azl_unit_price_krw" placeholder="0" class="form-input" min="0"/></div>
+      <div><label class="form-label">결제 주기</label><select id="azl_billing_cycle" class="form-input"><option value="월간">월간</option><option value="연간">연간</option></select></div>
+      <div><label class="form-label">상태</label><select id="azl_status" class="form-input"><option value="활성">활성</option><option value="만료">만료</option><option value="중단">중단</option><option value="검토중">검토중</option></select></div>
+      <div><label class="form-label">계약 시작일</label><input type="date" id="azl_contract_start" class="form-input"/></div>
+      <div><label class="form-label">계약 만료일</label><input type="date" id="azl_contract_end" class="form-input"/></div>
+      <div><label class="form-label">자동 갱신</label><select id="azl_auto_renew" class="form-input"><option value="true">예</option><option value="false">아니오</option></select></div>
+      <div><label class="form-label">담당자</label><input type="text" id="azl_owner" class="form-input"/></div>
+      <div><label class="form-label">담당 부서</label><input type="text" id="azl_department" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="azl_note" rows="2" class="form-input resize-none"></textarea></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAzureLicense()" class="px-5 py-2.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('azureLicModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 월별 비용 등록/수정 ========== -->
+<div id="azureCostModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="azureCostModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-file-invoice-dollar text-blue-500"></i>비용 등록</h2>
+      <button onclick="closeModal('azureCostModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="azCostEditId"/>
+      <div><label class="form-label">기간(월) *</label><input type="month" id="azc_period" class="form-input" required/></div>
+      <div><label class="form-label">서비스 구분</label>
+        <select id="azc_service_group" class="form-input">
+          <option value="">선택</option>
+          <option value="Azure">Azure (Microsoft 클라우드)</option>
+          <option value="Claude">Claude (AI Framework)</option>
+          <option value="GoWorks">GoWorks 개발/구독관리</option>
+          <option value="SendGrid">SendGrid 메일 서비스</option>
+          <option value="AzureFabric">Azure Fabric (학습/데모/개발)</option>
+          <option value="DataPortal">DataPortal (학습/데모/개발)</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      <div class="md:col-span-2"><label class="form-label">서비스명 *</label><input type="text" id="azc_service_name" placeholder="예: Azure OpenAI, AKS, SQL DB, SendGrid API" class="form-input" required/></div>
+      <div><label class="form-label">카테고리</label>
+        <select id="azc_category" class="form-input">
+          <option value="">선택</option><option>Compute</option><option>Storage</option><option>Network</option>
+          <option>Database</option><option>AI/ML</option><option>Security</option><option>License</option><option>기타</option>
+        </select>
+      </div>
+      <div><label class="form-label">구독</label><input type="text" id="azc_subscription" class="form-input" placeholder="구독명"/></div>
+      <div><label class="form-label">실제 비용(USD)</label><input type="number" id="azc_actual_cost_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div><label class="form-label">실제 비용(KRW) *</label><input type="number" id="azc_actual_cost_krw" placeholder="0" class="form-input" required min="0"/></div>
+      <div><label class="form-label">예산(KRW)</label><input type="number" id="azc_budget_krw" placeholder="예산 미설정 시 0" class="form-input" min="0"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><input type="text" id="azc_note" class="form-input" placeholder="메모"/></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAzureCost()" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('azureCostModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 계정 수정 ========== -->
+<div id="adminUserModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-user-edit text-yellow-500"></i>계정 정보 수정</h2>
+      <button onclick="closeModal('adminUserModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="adminEditUserId"/>
+      <!-- 기본 정보 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="form-label">이름</label><input type="text" id="adm_full_name" class="form-input bg-gray-50" readonly/></div>
+        <div><label class="form-label">이메일</label><input type="text" id="adm_email" class="form-input bg-gray-50" readonly/></div>
+        <div><label class="form-label">역할 *</label>
+          <select id="adm_role" class="form-input">
+            <option value="admin">🛡 admin (시스템 관리자)</option>
+            <option value="팀장">팀장</option>
+            <option value="파트장">파트장</option>
+            <option value="팀원">팀원</option>
+          </select>
+        </div>
+        <div><label class="form-label">부서</label><input type="text" id="adm_department" class="form-input"/></div>
+        <div class="sm:col-span-2"><label class="form-label">계정 활성화</label>
+          <select id="adm_active" class="form-input"><option value="true">✅ 활성</option><option value="false">🚫 비활성</option></select>
+        </div>
+      </div>
+      <!-- 메뉴별 접근 권한 -->
+      <div class="border border-gray-200 rounded-xl overflow-hidden">
+        <div class="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2">
+          <i class="fas fa-shield-alt text-yellow-500 text-sm"></i>
+          <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">메뉴별 접근 권한</span>
+        </div>
+        <div class="p-4 space-y-3">
+          <!-- 권한 토글 헤더 -->
+          <div class="grid grid-cols-3 gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide pb-1 border-b border-gray-100">
+            <span>메뉴</span>
+            <span class="text-center">열람</span>
+            <span class="text-center">입력·수정</span>
+          </div>
+          <!-- 고정자산관리 -->
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-desktop text-blue-400 text-xs w-4"></i>고정자산관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_assets_view"/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_assets_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <!-- IT정기결제 -->
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-credit-card text-purple-400 text-xs w-4"></i>IT정기결제</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_sub_view"/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_sub_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <!-- 판촉물관리 -->
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-gift text-pink-400 text-xs w-4"></i>판촉물관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_promo_view"/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_promo_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <!-- Azure 관리 -->
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fab fa-microsoft text-blue-500 text-xs w-4"></i>Azure 관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_azure_view"/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="perm_azure_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <p class="text-xs text-gray-400 pt-1"><i class="fas fa-info-circle mr-1"></i>admin 역할은 모든 메뉴에 자동으로 전체 권한이 부여됩니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-between gap-2 p-5 border-t border-gray-100">
+      <button onclick="deleteAdminUser(document.getElementById('adminEditUserId').value, document.getElementById('adm_full_name').value)" class="px-4 py-2.5 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 border border-red-200 font-medium flex items-center gap-1.5"><i class="fas fa-trash"></i>계정 삭제</button>
+      <div class="flex gap-2">
+        <button onclick="saveAdminUser()" class="px-5 py-2.5 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+        <button onclick="closeModal('adminUserModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 신규 사용자 추가 ========== -->
+<div id="createUserModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-user-plus text-green-500"></i>신규 사용자 추가</h2>
+      <button onclick="closeModal('createUserModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <!-- 기본 정보 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="form-label">이름 *</label><input type="text" id="new_full_name" class="form-input" placeholder="홍길동"/></div>
+        <div><label class="form-label">이메일 *</label><input type="text" id="new_email" class="form-input" placeholder="hong@gowit.co.kr"/></div>
+        <div><label class="form-label">로그인 ID *</label><input type="text" id="new_username" class="form-input" placeholder="이메일과 동일하게 권장"/></div>
+        <div><label class="form-label">초기 비밀번호 *</label><input type="password" id="new_password" class="form-input" placeholder="초기 비밀번호 입력"/></div>
+        <div><label class="form-label">역할 *</label>
+          <select id="new_role" class="form-input">
+            <option value="팀원">팀원</option>
+            <option value="파트장">파트장</option>
+            <option value="팀장">팀장</option>
+            <option value="admin">🛡 admin (시스템 관리자)</option>
+          </select>
+        </div>
+        <div><label class="form-label">부서</label><input type="text" id="new_department" class="form-input" placeholder="소속 부서"/></div>
+      </div>
+      <!-- 메뉴별 접근 권한 -->
+      <div class="border border-gray-200 rounded-xl overflow-hidden">
+        <div class="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center gap-2">
+          <i class="fas fa-shield-alt text-green-500 text-sm"></i>
+          <span class="text-xs font-bold text-gray-600 uppercase tracking-wide">메뉴별 접근 권한</span>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="grid grid-cols-3 gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide pb-1 border-b border-gray-100">
+            <span>메뉴</span><span class="text-center">열람</span><span class="text-center">입력·수정</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-desktop text-blue-400 text-xs w-4"></i>고정자산관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_assets_view" checked/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_assets_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-credit-card text-purple-400 text-xs w-4"></i>IT정기결제</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_sub_view" checked/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_sub_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fas fa-gift text-pink-400 text-xs w-4"></i>판촉물관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_promo_view" checked/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_promo_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center py-1">
+            <span class="text-sm font-medium text-gray-700 flex items-center gap-1.5"><i class="fab fa-microsoft text-blue-500 text-xs w-4"></i>Azure 관리</span>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_azure_view"/><span class="perm-slider"></span></label></div>
+            <div class="flex justify-center"><label class="perm-toggle"><input type="checkbox" id="nperm_azure_write"/><span class="perm-slider"></span></label></div>
+          </div>
+          <p class="text-xs text-gray-400 pt-1"><i class="fas fa-info-circle mr-1"></i>admin 역할은 모든 메뉴에 자동으로 전체 권한이 부여됩니다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveNewUser()" class="px-5 py-2.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 font-medium flex items-center gap-1.5"><i class="fas fa-user-plus"></i>추가</button>
+      <button onclick="closeModal('createUserModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+<div id="assetDetailModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-info-circle text-blue-500"></i>자산 상세 정보</h2><button onclick="closeModal('assetDetailModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+    <div id="assetDetailContent" class="p-5"></div>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button id="detailEditBtn" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><i class="fas fa-edit mr-1"></i>수정</button>
+      <button onclick="closeModal('assetDetailModal')" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 자산 등록/수정 ========== -->
+<div id="registerModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="registerModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-plus-circle text-blue-500"></i>신규 자산 입고 등록</h2>
+      <button onclick="closeModal('registerModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form id="registerForm" class="p-5 space-y-5">
+      <input type="hidden" id="editAssetId" value=""/>
+      <!-- 기본 정보 -->
+      <fieldset class="border border-gray-200 rounded-xl p-4">
+        <legend class="text-xs font-bold text-gray-600 px-2 uppercase tracking-wide">📋 기본 정보</legend>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div><label class="form-label">자산번호 *</label><input type="text" id="f_asset_no" placeholder="예: IT-2025-001" class="form-input" required/></div>
+          <div><label class="form-label">자산 분류 *</label><select id="f_asset_category" class="form-input" required onchange="toggleSpecFields()"><option value="">선택하세요</option><option>PC/노트북</option><option>모니터</option><option>서버</option><option>네트워크장비</option><option>프린터/복합기</option><option>저장장치</option><option>주변기기</option><option>기타</option></select></div>
+          <div><label class="form-label">장비명 *</label><input type="text" id="f_asset_name" placeholder="예: 노트북, 데스크탑" class="form-input" required/></div>
+          <div><label class="form-label">제조사</label><input type="text" id="f_manufacturer" placeholder="예: Samsung, Dell" class="form-input"/></div>
+          <div><label class="form-label">모델명</label><input type="text" id="f_model_name" placeholder="예: Galaxy Book Pro" class="form-input"/></div>
+          <div><label class="form-label">시리얼번호</label><input type="text" id="f_serial_no" class="form-input"/></div>
+        </div>
+      </fieldset>
+
+      <!-- PC/서버 사양 (조건부 표시) -->
+      <fieldset id="pcSpecFields" class="border border-blue-200 rounded-xl p-4 hidden">
+        <legend class="text-xs font-bold text-blue-600 px-2 uppercase tracking-wide">💻 PC/서버 사양</legend>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div>
+            <label class="form-label">CPU</label>
+            <input type="text" id="f_cpu" placeholder="예: Intel i7-1360P, Ryzen 5 7600" class="form-input"/>
+            <p class="text-xs text-gray-400 mt-1">프로세서 모델명</p>
+          </div>
+          <div>
+            <label class="form-label">MEM (메모리)</label>
+            <input type="text" id="f_mem" placeholder="예: 16GB DDR5, 32GB DDR4" class="form-input"/>
+            <p class="text-xs text-gray-400 mt-1">RAM 용량 및 규격</p>
+          </div>
+          <div>
+            <label class="form-label">SSD/HDD (저장장치)</label>
+            <input type="text" id="f_ssd" placeholder="예: SSD 512GB NVMe, HDD 1TB" class="form-input"/>
+            <p class="text-xs text-gray-400 mt-1">저장장치 용량 및 종류</p>
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label">기타 사양</label>
+          <input type="text" id="f_spec" placeholder="예: RTX 4060, 15.6인치 FHD, Win11 Pro" class="form-input"/>
+          <p class="text-xs text-gray-400 mt-1">GPU, 디스플레이, OS 등 추가 사양</p>
+        </div>
+      </fieldset>
+
+      <!-- 일반 사양 (PC 외) -->
+      <fieldset id="generalSpecFields" class="border border-gray-200 rounded-xl p-4">
+        <legend class="text-xs font-bold text-gray-600 px-2 uppercase tracking-wide">📝 사양</legend>
+        <div class="mt-2">
+          <label class="form-label">사양/규격</label>
+          <input type="text" id="f_spec_general" placeholder="예: 27인치 4K IPS, 48포트 기가비트" class="form-input"/>
+        </div>
+      </fieldset>
+
+      <!-- 구매 정보 -->
+      <fieldset class="border border-gray-200 rounded-xl p-4">
+        <legend class="text-xs font-bold text-gray-600 px-2 uppercase tracking-wide">🛒 구매 정보</legend>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div><label class="form-label">구매일자 *</label><input type="date" id="f_purchase_date" class="form-input" required/></div>
+          <div><label class="form-label">구매금액(원)</label><input type="number" id="f_purchase_price" class="form-input"/></div>
+          <div><label class="form-label">구매처</label><input type="text" id="f_vendor" class="form-input"/></div>
+          <div><label class="form-label">보증만료일</label><input type="date" id="f_warranty_end" class="form-input"/></div>
+        </div>
+      </fieldset>
+
+      <!-- 사용자/배치 정보 -->
+      <fieldset class="border border-gray-200 rounded-xl p-4">
+        <legend class="text-xs font-bold text-gray-600 px-2 uppercase tracking-wide">👤 사용자 / 배치 정보</legend>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <div><label class="form-label">사용자명</label><input type="text" id="f_user_name" class="form-input"/></div>
+          <div><label class="form-label">사번</label><input type="text" id="f_user_id" class="form-input"/></div>
+          <div><label class="form-label">사용 부서</label><input type="text" id="f_department" class="form-input"/></div>
+          <div><label class="form-label">위치/설치장소</label><input type="text" id="f_location" class="form-input"/></div>
+          <div><label class="form-label">상태 *</label><select id="f_status" class="form-input" required><option value="사용중">사용중</option><option value="입고">입고</option><option value="반출">반출</option><option value="반납">반납</option><option value="수리중">수리중</option><option value="폐기">폐기</option><option value="매각">매각</option></select></div>
+          <div><label class="form-label">비고</label><input type="text" id="f_note" class="form-input"/></div>
+        </div>
+      </fieldset>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAsset()" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('registerModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 자산 상태변경 ========== -->
+<div id="actionModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 id="actionModalTitle" class="text-lg font-bold text-gray-800"></h2><button onclick="closeModal('actionModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+    <div class="p-5 space-y-4">
+      <input type="hidden" id="actionAssetId"/><input type="hidden" id="actionType"/>
+      <div id="actionExtraFields"></div>
+      <div><label class="form-label">처리일자 *</label><input type="date" id="actionDate" class="form-input" required/></div>
+      <div><label class="form-label">처리자</label><input type="text" id="actionHandler" class="form-input" value="IT관리자"/></div>
+      <div><label class="form-label">내용/사유 *</label><textarea id="actionDescription" rows="3" class="form-input resize-none" required></textarea></div>
+      <div><label class="form-label">비고</label><input type="text" id="actionNote" class="form-input"/></div>
+    </div>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="submitAction()" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium flex items-center gap-1.5"><i class="fas fa-check"></i>처리</button>
+      <button onclick="closeModal('actionModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 구독 등록/수정 ========== -->
+<div id="subRegisterModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 id="subRegisterModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-credit-card text-purple-500"></i>구독 서비스 등록</h2><button onclick="closeModal('subRegisterModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+    <form id="subRegisterForm" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="editSubId" value=""/>
+      <div><label class="form-label">서비스명 *</label><input type="text" id="sf_service_name" placeholder="예: AWS, GitHub, Slack" class="form-input" required/></div>
+      <div><label class="form-label">카테고리 *</label><select id="sf_category" class="form-input" required><option value="">선택하세요</option><option>클라우드/인프라</option><option>SaaS/협업</option><option>보안</option><option>개발도구</option><option>도메인/DNS</option><option>라이선스/OS</option><option>AI/데이터</option><option>기타</option></select></div>
+      <div><label class="form-label">공급업체/벤더</label><input type="text" id="sf_vendor" class="form-input"/></div>
+      <div><label class="form-label">서비스 설명</label><input type="text" id="sf_description" class="form-input"/></div>
+      <div><label class="form-label">결제 주기 *</label><select id="sf_billing_cycle" class="form-input" required><option value="">선택하세요</option><option>월간</option><option>연간</option><option>분기</option><option>일회성</option></select></div>
+      <div><label class="form-label">결제 통화</label><select id="sf_currency" class="form-input"><option value="KRW">KRW (원)</option><option value="USD">USD (달러)</option><option value="EUR">EUR (유로)</option><option value="JPY">JPY (엔)</option></select></div>
+      <div><label class="form-label">단가 (결제 주기당) *</label><input type="number" id="sf_unit_price" class="form-input" required step="0.01"/></div>
+      <div><label class="form-label">수량/시트 수</label><input type="number" id="sf_quantity" class="form-input" value="1" min="1"/></div>
+      <div><label class="form-label">월 환산 금액(원) <span class="text-gray-400 font-normal text-xs">※ 수기 입력</span></label><input type="number" id="sf_monthly_krw" placeholder="결제 당시 환율로 직접 입력" class="form-input"/><p class="text-xs text-gray-500 mt-1">💡 외화는 결제 당시 환율 적용</p></div>
+      <div><label class="form-label">연 환산 금액(원) <span class="text-gray-400 font-normal text-xs">※ 수기 입력</span></label><input type="number" id="sf_annual_krw" placeholder="연간 원화 총액 직접 입력" class="form-input"/><p class="text-xs text-gray-500 mt-1">💡 외화는 결제 당시 환율 적용</p></div>
+      <div><label class="form-label">결제 수단</label><input type="text" id="sf_payment_method" placeholder="예: 법인카드 1234" class="form-input"/></div>
+      <div><label class="form-label">결제 계정/이메일</label><input type="text" id="sf_payment_account" class="form-input"/></div>
+      <div><label class="form-label">계약 시작일</label><input type="date" id="sf_contract_start" class="form-input"/></div>
+      <div><label class="form-label">계약 만료/갱신일</label><input type="date" id="sf_contract_end" class="form-input"/></div>
+      <div><label class="form-label">자동 갱신</label><select id="sf_auto_renew" class="form-input"><option value="true">예 (자동갱신)</option><option value="false">아니오 (수동갱신)</option></select></div>
+      <div><label class="form-label">담당자</label><input type="text" id="sf_manager" class="form-input"/></div>
+      <div><label class="form-label">사용 부서</label><input type="text" id="sf_department" class="form-input"/></div>
+      <div><label class="form-label">상태</label><select id="sf_status" class="form-input"><option value="활성">활성</option><option value="일시정지">일시정지</option><option value="해지">해지</option><option value="갱신검토">갱신검토</option></select></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="sf_note" rows="2" class="form-input resize-none"></textarea></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveSubscription()" class="px-5 py-2.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('subRegisterModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 구독 상세 ========== -->
+<div id="subDetailModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-credit-card text-purple-500"></i>구독 상세 정보</h2><button onclick="closeModal('subDetailModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+    <div id="subDetailContent" class="p-5"></div>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button id="subDetailEditBtn" class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"><i class="fas fa-edit mr-1"></i>수정</button>
+      <button id="subDetailDeleteBtn" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"><i class="fas fa-trash mr-1"></i>삭제</button>
+      <button onclick="closeModal('subDetailModal')" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">닫기</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- 토스트 알림 -->
+<div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2"></div>
+
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/subscription.js"></script>
+<script src="js/promotions.js"></script>
+<script src="js/azure.js"></script>
+<script>
+  // ── 인증 가드 ──
+  (function() {
+    if (!AuthManager.isLoggedIn()) {
+      window.location.replace('login.html');
+    }
+  })();
+</script>
+</body>
+</html>

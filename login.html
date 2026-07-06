@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IT 통합 자산관리 시스템 · 로그인</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', sans-serif; }
+
+    /* 배경 */
+    .login-bg {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #1e40af 100%);
+      min-height: 100vh;
+    }
+
+    /* 유리 카드 */
+    .glass-card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+    }
+
+    /* 탭 */
+    .auth-tab {
+      flex: 1; padding: 10px 0;
+      border-radius: 10px; border: none;
+      font-size: 0.82rem; font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      background: transparent;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .auth-tab.active {
+      background: rgba(59,130,246,0.35);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+    }
+
+    /* 이메일 복합 입력 */
+    .email-wrap {
+      display: flex; align-items: stretch;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 12px; overflow: hidden;
+      transition: all 0.2s;
+    }
+    .email-wrap:focus-within {
+      border-color: #60a5fa;
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+    }
+    .email-wrap.err  { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.18); }
+    .email-wrap.ok   { border-color: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,0.15); }
+    .email-local {
+      flex: 1; min-width: 0;
+      background: transparent; border: none; outline: none;
+      color: #fff; font-size: 0.875rem;
+      padding: 12px 8px 12px 16px;
+    }
+    .email-local::placeholder { color: rgba(255,255,255,0.3); }
+    .email-sep  { color: rgba(255,255,255,0.45); font-size: 0.875rem; padding: 12px 2px; align-self: center; }
+    .email-domain {
+      color: #6ee7b7; font-size: 0.8rem; font-weight: 700;
+      padding: 12px 14px 12px 4px; align-self: center; white-space: nowrap;
+    }
+
+    /* 일반 입력 */
+    .f-input {
+      width: 100%; padding: 12px 44px 12px 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 12px; color: #fff;
+      font-size: 0.875rem; font-family: inherit;
+      outline: none; transition: all 0.2s;
+    }
+    .f-input::placeholder { color: rgba(255,255,255,0.3); }
+    .f-input:focus {
+      border-color: #60a5fa;
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+    }
+    .f-input.err { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.18); }
+    .f-input.ok  { border-color: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,0.15); }
+    .f-select {
+      width: 100%; padding: 12px 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 12px; color: #fff;
+      font-size: 0.875rem; font-family: inherit;
+      outline: none; transition: all 0.2s; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='rgba(255,255,255,0.4)' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+    .f-select:focus {
+      border-color: #60a5fa;
+      background-color: rgba(255,255,255,0.12);
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+    }
+    .f-select option { background: #1e3a5f; color: #fff; }
+    .f-select.err { border-color: #f87171; }
+    .f-select.ok  { border-color: #34d399; }
+
+    /* 라벨 */
+    .f-label {
+      display: block; margin-bottom: 6px;
+      color: rgba(147,197,253,1);
+      font-size: 0.72rem; font-weight: 600;
+    }
+
+    /* 힌트 */
+    .f-hint { font-size: 0.68rem; margin-top: 5px; }
+    .hint-default { color: rgba(147,197,253,0.5); }
+    .hint-ok      { color: #6ee7b7; }
+    .hint-err     { color: #fca5a5; }
+    .hint-warn    { color: #fcd34d; }
+
+    /* 버튼 */
+    .btn-primary {
+      width: 100%; padding: 13px;
+      border-radius: 12px; border: none;
+      color: #fff; font-weight: 700; font-size: 0.875rem;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      cursor: pointer; transition: all 0.2s;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(59,130,246,0.4);
+    }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .btn-green {
+      background: linear-gradient(135deg, #059669, #0d9488);
+    }
+    .btn-green:hover:not(:disabled) {
+      background: linear-gradient(135deg, #047857, #0f766e);
+      box-shadow: 0 8px 24px rgba(5,150,105,0.4);
+    }
+    .btn-sm {
+      padding: 10px 14px;
+      border-radius: 10px; border: 1px solid rgba(96,165,250,0.4);
+      background: rgba(59,130,246,0.2);
+      color: #93c5fd; font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-sm:hover { background: rgba(59,130,246,0.4); color: #fff; }
+
+    /* 알림 */
+    .alert {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 12px 14px; border-radius: 12px;
+      font-size: 0.8rem; margin-bottom: 18px;
+    }
+    .alert-err { background: rgba(239,68,68,0.13); border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
+    .alert-ok  { background: rgba(16,185,129,0.13); border: 1px solid rgba(52,211,153,0.3); color: #6ee7b7; }
+    .alert-info{ background: rgba(59,130,246,0.12); border: 1px solid rgba(96,165,250,0.3); color: #93c5fd; }
+
+    /* 비밀번호 강도 바 */
+    .pw-bar {
+      flex: 1; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.1);
+      transition: background 0.3s;
+    }
+
+    /* 역할 뱃지 */
+    .role-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 9999px;
+      font-size: 0.7rem; font-weight: 600;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.65);
+      border: 1px solid rgba(255,255,255,0.13);
+    }
+
+    /* 애니메이션 */
+    .float-icon { animation: float 4s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+    .shake { animation: shake 0.4s ease; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)} 40%{transform:translateX(8px)}
+      60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+    }
+    .fade-in { animation: fadeIn 0.22s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+    /* 도메인 뱃지 */
+    .domain-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(16,185,129,0.18); border: 1px solid rgba(52,211,153,0.35);
+      color: #6ee7b7; font-size: 0.68rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 6px; margin-left: 6px;
+    }
+  </style>
+</head>
+<body class="login-bg flex items-center justify-center p-4 min-h-screen">
+
+  <!-- 배경 장식 -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/3 left-1/3 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="w-full max-w-md relative z-10">
+
+    <!-- 로고 -->
+    <div class="text-center mb-7">
+      <div class="float-icon inline-block mb-4">
+        <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl mx-auto">
+          <i class="fas fa-network-wired text-white text-3xl"></i>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-1">IT 통합 자산관리 시스템</h1>
+      <p class="text-blue-300 text-sm">경영지원팀 전용 관리 플랫폼</p>
+    </div>
+
+    <!-- 카드 -->
+    <div class="glass-card rounded-2xl p-8">
+
+      <!-- 탭 -->
+      <div class="flex gap-1 p-1 rounded-xl mb-7" style="background:rgba(255,255,255,0.05)">
+        <button id="tabLogin"    class="auth-tab active" onclick="switchTab('login')">
+          <i class="fas fa-sign-in-alt mr-1.5"></i>로그인
+        </button>
+        <button id="tabRegister" class="auth-tab" onclick="switchTab('register')">
+          <i class="fas fa-user-plus mr-1.5"></i>회원가입
+        </button>
+      </div>
+
+      <!-- ══════════ 로그인 패널 ══════════ -->
+      <div id="panelLogin" class="fade-in">
+
+        <div id="loginAlert" class="alert alert-err hidden">
+          <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+          <span id="loginAlertText"></span>
+        </div>
+
+        <div class="space-y-4">
+
+          <!-- 이메일 -->
+          <div>
+            <label class="f-label"><i class="fas fa-envelope mr-1"></i>회사 이메일</label>
+            <div class="email-wrap" id="loginEmailWrap">
+              <input type="text" id="loginEmailLocal" class="email-local"
+                placeholder="이메일 앞자리"
+                oninput="syncLoginEmail()"
+                onkeydown="if(event.key==='Enter') document.getElementById('loginPw').focus()"/>
+              <span class="email-sep">@</span>
+              <span class="email-domain">gowit.co.kr</span>
+            </div>
+          </div>
+
+          <!-- 비밀번호 -->
+          <div>
+            <label class="f-label"><i class="fas fa-lock mr-1"></i>비밀번호</label>
+            <div class="relative">
+              <input type="password" id="loginPw" class="f-input"
+                placeholder="비밀번호를 입력하세요"
+                onkeydown="if(event.key==='Enter') doLogin()"/>
+              <button type="button" onclick="togglePw('loginPw','loginPwEye')"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-blue-300 transition-colors">
+                <i id="loginPwEye" class="fas fa-eye text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 이메일 저장 -->
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded accent-blue-500"/>
+            <label for="rememberMe" class="text-xs cursor-pointer" style="color:rgba(147,197,253,0.65)">이메일 저장</label>
+          </div>
+
+          <button onclick="doLogin()" id="loginBtn" class="btn-primary mt-1">
+            <i class="fas fa-sign-in-alt"></i> 로그인
+          </button>
+        </div>
+
+        <!-- 접근 권한 안내 -->
+        <div class="mt-6 pt-5" style="border-top:1px solid rgba(255,255,255,0.1)">
+          <p class="text-center mb-3" style="font-size:0.7rem;color:rgba(147,197,253,0.5)">접근 가능 직책</p>
+          <div class="flex justify-center gap-2 flex-wrap">
+            <span class="role-badge"><i class="fas fa-crown text-yellow-400"></i>팀장</span>
+            <span class="role-badge"><i class="fas fa-user-tie text-blue-400"></i>파트장</span>
+            <span class="role-badge"><i class="fas fa-user text-green-400"></i>팀원</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ 회원가입 패널 ══════════ -->
+      <div id="panelRegister" class="hidden fade-in">
+
+        <div id="regAlert" class="alert hidden">
+          <i id="regAlertIcon" class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+          <span id="regAlertText"></span>
+        </div>
+
+        <div class="space-y-4">
+
+          <!-- 회사 이메일 (= ID) -->
+          <div>
+            <label class="f-label">
+              <i class="fas fa-envelope mr-1"></i>회사 이메일 (로그인 ID)
+              <span class="domain-chip"><i class="fas fa-shield-alt"></i>@gowit.co.kr</span>
+            </label>
+            <div class="email-wrap" id="regEmailWrap">
+              <input type="text" id="regEmailLocal" class="email-local"
+                placeholder="이메일 앞자리 입력"
+                maxlength="50"
+                oninput="onRegEmailInput()"
+                onkeydown="if(event.key==='Enter') document.getElementById('regName').focus()"/>
+              <span class="email-sep">@</span>
+              <span class="email-domain">gowit.co.kr</span>
+            </div>
+            <p id="regEmailHint" class="f-hint hint-default">gowit.co.kr 도메인 이메일이 로그인 ID로 사용됩니다</p>
+          </div>
+
+          <!-- 이름 -->
+          <div>
+            <label class="f-label"><i class="fas fa-id-card mr-1"></i>이름 (실명)</label>
+            <div class="relative">
+              <input type="text" id="regName" class="f-input"
+                placeholder="예: 홍길동" maxlength="20"
+                oninput="onRegNameInput()"
+                onkeydown="if(event.key==='Enter') document.getElementById('regRole').focus()"/>
+              <i class="fas fa-user absolute right-3 top-1/2 -translate-y-1/2 text-blue-300/30 text-sm pointer-events-none"></i>
+            </div>
+            <p id="regNameHint" class="f-hint hint-default">실명을 입력해주세요</p>
+          </div>
+
+          <!-- 직책 -->
+          <div>
+            <label class="f-label"><i class="fas fa-sitemap mr-1"></i>직책</label>
+            <select id="regRole" class="f-select" onchange="onRegRoleChange()">
+              <option value="">-- 직책을 선택하세요 --</option>
+              <option>팀장</option>
+              <option>파트장</option>
+              <option>팀원</option>
+            </select>
+            <p id="regRoleHint" class="f-hint hint-default">직책에 따라 접근 메뉴가 동일하게 적용됩니다</p>
+          </div>
+
+          <!-- 비밀번호 -->
+          <div>
+            <label class="f-label"><i class="fas fa-lock mr-1"></i>비밀번호</label>
+            <div class="relative">
+              <input type="password" id="regPw" class="f-input"
+                placeholder="8자 이상, 영문 + 숫자 포함" maxlength="50"
+                oninput="onPwInput()"
+                onkeydown="if(event.key==='Enter') document.getElementById('regPw2').focus()"/>
+              <button type="button" onclick="togglePw('regPw','regPwEye')"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-blue-300 transition-colors">
+                <i id="regPwEye" class="fas fa-eye text-sm"></i>
+              </button>
+            </div>
+            <!-- 강도 바 -->
+            <div class="flex gap-1 mt-2">
+              <div id="pwBar1" class="pw-bar"></div>
+              <div id="pwBar2" class="pw-bar"></div>
+              <div id="pwBar3" class="pw-bar"></div>
+              <div id="pwBar4" class="pw-bar"></div>
+            </div>
+            <p id="pwHint" class="f-hint hint-default">8자 이상, 영문 + 숫자를 포함해 주세요</p>
+          </div>
+
+          <!-- 비밀번호 확인 -->
+          <div>
+            <label class="f-label"><i class="fas fa-lock mr-1"></i>비밀번호 확인</label>
+            <div class="relative">
+              <input type="password" id="regPw2" class="f-input"
+                placeholder="비밀번호를 다시 입력하세요" maxlength="50"
+                oninput="onPw2Input()"
+                onkeydown="if(event.key==='Enter') doRegister()"/>
+              <button type="button" onclick="togglePw('regPw2','regPw2Eye')"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-blue-300 transition-colors">
+                <i id="regPw2Eye" class="fas fa-eye text-sm"></i>
+              </button>
+            </div>
+            <p id="pw2Hint" class="f-hint hint-default"></p>
+          </div>
+
+          <button onclick="doRegister()" id="regBtn" class="btn-primary btn-green mt-1">
+            <i class="fas fa-user-plus"></i> 가입하기
+          </button>
+        </div>
+
+        <!-- 가입 안내 -->
+        <div class="mt-5 pt-4" style="border-top:1px solid rgba(255,255,255,0.1)">
+          <div class="alert alert-info" style="margin-bottom:0">
+            <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
+            <span style="font-size:0.72rem; line-height:1.6">
+              <strong>가입 안내</strong><br>
+              · gowit.co.kr 이메일이 로그인 ID로 사용됩니다<br>
+              · 가입 즉시 바로 로그인 가능합니다
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /glass-card -->
+
+    <p class="text-center mt-6" style="font-size:0.7rem;color:rgba(147,197,253,0.3)">
+      © 2025 IT 통합 자산관리 시스템 · 경영지원팀
+    </p>
+  </div>
+
+  <script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+  <script>
+  /* ─────────────────────────────────────────
+     상수
+  ───────────────────────────────────────── */
+  const DOMAIN = 'gowit.co.kr';
+
+  /* ─────────────────────────────────────────
+     DOMContentLoaded
+  ───────────────────────────────────────── */
+  window.addEventListener('DOMContentLoaded', () => {
+    if (AuthManager.isLoggedIn()) {
+      window.location.replace('index.html');
+      return;
+    }
+    // 저장된 이메일 앞자리 복원
+    const saved = localStorage.getItem('saved_email_local');
+    if (saved) {
+      document.getElementById('loginEmailLocal').value = saved;
+      document.getElementById('rememberMe').checked = true;
+    }
+    if (location.hash === '#register') switchTab('register');
+  });
+
+  /* ─────────────────────────────────────────
+     탭 전환
+  ───────────────────────────────────────── */
+  function switchTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('tabLogin').classList.toggle('active', isLogin);
+    document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+    document.getElementById('panelLogin').classList.toggle('hidden', !isLogin);
+    document.getElementById('panelRegister').classList.toggle('hidden', isLogin);
+    hideAlert('loginAlert');
+    hideAlert('regAlert');
+  }
+
+  /* ─────────────────────────────────────────
+     공통 유틸
+  ───────────────────────────────────────── */
+  function showAlert(id, msg, type = 'err') {
+    const box  = document.getElementById(id);
+    const text = document.getElementById(id + 'Text');
+    const icon = document.getElementById(id + 'Icon');
+    if (!box || !text) return;
+    const cls  = { err:'alert-err', ok:'alert-ok', info:'alert-info' };
+    const ico  = { err:'fa-exclamation-circle', ok:'fa-check-circle', info:'fa-info-circle' };
+    box.className = `alert ${cls[type] || 'alert-err'}`;
+    if (icon) icon.className = `fas ${ico[type] || 'fa-exclamation-circle'} mt-0.5 flex-shrink-0`;
+    text.textContent = msg;
+  }
+  function hideAlert(id) {
+    const b = document.getElementById(id);
+    if (b) b.classList.add('hidden');
+  }
+
+  function setWrapState(wrapId, state) {
+    const el = document.getElementById(wrapId);
+    if (!el) return;
+    el.classList.remove('err','ok');
+    if (state) el.classList.add(state);
+  }
+  function setInputState(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('err','ok');
+    if (state) el.classList.add(state);
+  }
+
+  function togglePw(inputId, iconId) {
+    const inp = document.getElementById(inputId);
+    const ico = document.getElementById(iconId);
+    if (!inp || !ico) return;
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    ico.className = show ? 'fas fa-eye-slash text-sm' : 'fas fa-eye text-sm';
+  }
+
+  function getFullEmail(localId) {
+    return (document.getElementById(localId)?.value?.trim() || '') + '@' + DOMAIN;
+  }
+
+  /* ─────────────────────────────────────────
+     로그인
+  ───────────────────────────────────────── */
+  function syncLoginEmail() {
+    // 실시간으로 wrap 상태만 유지 (별도 검증 없이 심플하게)
+    const v = document.getElementById('loginEmailLocal').value.trim();
+    setWrapState('loginEmailWrap', v ? '' : '');
+  }
+
+  async function doLogin() {
+    hideAlert('loginAlert');
+    const localPart = document.getElementById('loginEmailLocal').value.trim();
+    const password  = document.getElementById('loginPw').value;
+    const remember  = document.getElementById('rememberMe').checked;
+    const btn       = document.getElementById('loginBtn');
+
+    if (!localPart) {
+      showAlert('loginAlert', '이메일 앞자리를 입력해주세요.', 'err');
+      setWrapState('loginEmailWrap', 'err');
+      return;
+    }
+    if (!password) {
+      showAlert('loginAlert', '비밀번호를 입력해주세요.', 'err');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 인증 중...';
+
+    try {
+      const fullEmail = `${localPart}@${DOMAIN}`;
+      await AuthManager.login(fullEmail, password);
+
+      if (remember) localStorage.setItem('saved_email_local', localPart);
+      else          localStorage.removeItem('saved_email_local');
+
+      btn.innerHTML = '<i class="fas fa-check"></i> 로그인 성공!';
+      btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+      setTimeout(() => window.location.replace('index.html'), 600);
+
+    } catch (e) {
+      showAlert('loginAlert', e.message, 'err');
+      setWrapState('loginEmailWrap', 'err');
+      document.querySelector('.glass-card').classList.add('shake');
+      setTimeout(() => document.querySelector('.glass-card').classList.remove('shake'), 500);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> 로그인';
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     회원가입 – 실시간 유효성
+  ───────────────────────────────────────── */
+  function onRegEmailInput() {
+    const val  = document.getElementById('regEmailLocal').value.trim();
+    const hint = document.getElementById('regEmailHint');
+    if (!val) {
+      hint.textContent = 'gowit.co.kr 도메인 이메일이 로그인 ID로 사용됩니다';
+      hint.className = 'f-hint hint-default';
+      setWrapState('regEmailWrap', '');
+      return;
+    }
+    if (!/^[a-zA-Z0-9._+\-]+$/.test(val)) {
+      hint.textContent = '이메일에 사용할 수 없는 문자가 포함되어 있습니다';
+      hint.className = 'f-hint hint-err';
+      setWrapState('regEmailWrap', 'err');
+    } else {
+      hint.textContent = `✓ 로그인 ID: ${val}@${DOMAIN}`;
+      hint.className = 'f-hint hint-ok';
+      setWrapState('regEmailWrap', 'ok');
+    }
+  }
+
+  function onRegNameInput() {
+    const val  = document.getElementById('regName').value.trim();
+    const hint = document.getElementById('regNameHint');
+    if (!val) {
+      hint.textContent = '실명을 입력해주세요';
+      hint.className = 'f-hint hint-default';
+      setInputState('regName', '');
+      return;
+    }
+    if (val.length < 2) {
+      hint.textContent = '이름은 2자 이상 입력해주세요';
+      hint.className = 'f-hint hint-err';
+      setInputState('regName', 'err');
+    } else {
+      hint.textContent = `✓ ${val}`;
+      hint.className = 'f-hint hint-ok';
+      setInputState('regName', 'ok');
+    }
+  }
+
+  function onRegRoleChange() {
+    const val  = document.getElementById('regRole').value;
+    const hint = document.getElementById('regRoleHint');
+    const el   = document.getElementById('regRole');
+    if (val) {
+      hint.textContent = `✓ ${val} 권한으로 가입됩니다`;
+      hint.className = 'f-hint hint-ok';
+      el.classList.add('ok'); el.classList.remove('err');
+    } else {
+      hint.textContent = '직책에 따라 접근 메뉴가 동일하게 적용됩니다';
+      hint.className = 'f-hint hint-default';
+      el.classList.remove('ok','err');
+    }
+  }
+
+  function calcPwStrength(pw) {
+    if (!pw || pw.length < 4) return 0;
+    let s = 0;
+    if (pw.length >= 8)           s++;
+    if (/[a-zA-Z]/.test(pw))     s++;
+    if (/[0-9]/.test(pw))         s++;
+    if (/[^a-zA-Z0-9]/.test(pw)) s++;
+    return Math.min(s, 4);
+  }
+
+  function onPwInput() {
+    const val   = document.getElementById('regPw').value;
+    const hint  = document.getElementById('pwHint');
+    const score = calcPwStrength(val);
+    const barColors = ['','#ef4444','#f97316','#eab308','#22c55e'];
+    const barLabels = ['','매우 약함','약함','보통','강함'];
+
+    ['pwBar1','pwBar2','pwBar3','pwBar4'].forEach((id, i) => {
+      document.getElementById(id).style.background =
+        i < score ? barColors[score] : 'rgba(255,255,255,0.1)';
+    });
+
+    if (!val) {
+      hint.textContent = '8자 이상, 영문 + 숫자를 포함해 주세요';
+      hint.className = 'f-hint hint-default';
+      setInputState('regPw', '');
+    } else if (score <= 1) {
+      hint.textContent = `비밀번호 강도: ${barLabels[score] || '매우 약함'}`;
+      hint.className = 'f-hint hint-err';
+      setInputState('regPw', 'err');
+    } else if (score === 2) {
+      hint.textContent = `비밀번호 강도: ${barLabels[score]}`;
+      hint.className = 'f-hint hint-warn';
+      setInputState('regPw', '');
+    } else {
+      hint.textContent = `비밀번호 강도: ${barLabels[score]} ✓`;
+      hint.className = 'f-hint hint-ok';
+      setInputState('regPw', 'ok');
+    }
+    onPw2Input(); // 확인란도 재검사
+  }
+
+  function onPw2Input() {
+    const pw1  = document.getElementById('regPw').value;
+    const pw2  = document.getElementById('regPw2').value;
+    const hint = document.getElementById('pw2Hint');
+    if (!pw2) { hint.textContent = ''; setInputState('regPw2', ''); return; }
+    if (pw1 === pw2) {
+      hint.textContent = '✓ 비밀번호가 일치합니다';
+      hint.className = 'f-hint hint-ok';
+      setInputState('regPw2', 'ok');
+    } else {
+      hint.textContent = '비밀번호가 일치하지 않습니다';
+      hint.className = 'f-hint hint-err';
+      setInputState('regPw2', 'err');
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     회원가입 제출
+  ───────────────────────────────────────── */
+  async function doRegister() {
+    hideAlert('regAlert');
+    const emailLocal = document.getElementById('regEmailLocal').value.trim();
+    const name       = document.getElementById('regName').value.trim();
+    const role       = document.getElementById('regRole').value;
+    const pw         = document.getElementById('regPw').value;
+    const pw2        = document.getElementById('regPw2').value;
+    const btn        = document.getElementById('regBtn');
+
+    // ── 유효성 ──
+    if (!emailLocal || !/^[a-zA-Z0-9._+\-]+$/.test(emailLocal)) {
+      showAlert('regAlert', '올바른 이메일 앞자리를 입력해주세요.', 'err');
+      setWrapState('regEmailWrap', 'err');
+      document.getElementById('regEmailLocal').focus();
+      return;
+    }
+    if (!name || name.length < 2) {
+      showAlert('regAlert', '이름(실명)을 2자 이상 입력해주세요.', 'err');
+      setInputState('regName', 'err');
+      document.getElementById('regName').focus();
+      return;
+    }
+    if (!role) {
+      showAlert('regAlert', '직책을 선택해주세요.', 'err');
+      document.getElementById('regRole').classList.add('err');
+      return;
+    }
+    if (!pw || pw.length < 8) {
+      showAlert('regAlert', '비밀번호는 8자 이상이어야 합니다.', 'err');
+      setInputState('regPw', 'err');
+      document.getElementById('regPw').focus();
+      return;
+    }
+    if (!/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) {
+      showAlert('regAlert', '비밀번호에 영문과 숫자를 모두 포함해주세요.', 'err');
+      setInputState('regPw', 'err');
+      document.getElementById('regPw').focus();
+      return;
+    }
+    if (pw !== pw2) {
+      showAlert('regAlert', '비밀번호가 일치하지 않습니다.', 'err');
+      setInputState('regPw2', 'err');
+      document.getElementById('regPw2').focus();
+      return;
+    }
+
+    const fullEmail = `${emailLocal}@${DOMAIN}`;
+
+    // ── 이메일 중복 확인 ──
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
+
+    try {
+      const chkRes  = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(fullEmail)}&limit=1`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const chkData = await chkRes.json();
+      const exists  = Array.isArray(chkData) && chkData.length > 0;
+      if (exists) {
+        showAlert('regAlert', `이미 가입된 이메일입니다: ${fullEmail}`, 'err');
+        setWrapState('regEmailWrap', 'err');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> 가입하기';
+        return;
+      }
+
+      // ── 등록 ──
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer':        'return=representation',
+        },
+        body: JSON.stringify({
+          email:     fullEmail,
+          password:  pw,
+          full_name: name,
+          role,
+          active:    true,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+        }),
+      });
+      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+
+      // ── 성공 ──
+      showAlert('regAlert',
+        `🎉 가입 완료! ${name}님 환영합니다. 로그인 탭에서 접속하세요.`, 'ok');
+      btn.innerHTML = '<i class="fas fa-check"></i> 가입 완료!';
+      btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+
+      setTimeout(() => {
+        switchTab('login');
+        // 로그인 폼에 이메일 자동 입력
+        document.getElementById('loginEmailLocal').value = emailLocal;
+        document.getElementById('loginPw').focus();
+        // 가입 폼 초기화
+        resetRegForm();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> 가입하기';
+        btn.style.background = '';
+      }, 1800);
+
+    } catch (e) {
+      showAlert('regAlert', '가입 중 오류가 발생했습니다: ' + e.message, 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-plus"></i> 가입하기';
+    }
+  }
+
+  function resetRegForm() {
+    ['regEmailLocal','regName','regPw','regPw2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.classList.remove('err','ok'); }
+    });
+    document.getElementById('regRole').value = '';
+    document.getElementById('regRole').classList.remove('err','ok');
+    setWrapState('regEmailWrap', '');
+
+    document.getElementById('regEmailHint').textContent = 'gowit.co.kr 도메인 이메일이 로그인 ID로 사용됩니다';
+    document.getElementById('regEmailHint').className = 'f-hint hint-default';
+    document.getElementById('regNameHint').textContent = '실명을 입력해주세요';
+    document.getElementById('regNameHint').className = 'f-hint hint-default';
+    document.getElementById('regRoleHint').textContent = '직책에 따라 접근 메뉴가 동일하게 적용됩니다';
+    document.getElementById('regRoleHint').className = 'f-hint hint-default';
+    document.getElementById('pwHint').textContent = '8자 이상, 영문 + 숫자를 포함해 주세요';
+    document.getElementById('pwHint').className = 'f-hint hint-default';
+    document.getElementById('pw2Hint').textContent = '';
+    ['pwBar1','pwBar2','pwBar3','pwBar4'].forEach(id => {
+      document.getElementById(id).style.background = 'rgba(255,255,255,0.1)';
+    });
+  }
+  </script>
+</body>
+</html>

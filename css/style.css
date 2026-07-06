@@ -1,0 +1,557 @@
+/* ===== IT 통합 자산관리 시스템 CSS ===== */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans KR', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f1f5f9;
+}
+
+/* ====== 사이드바 ====== */
+.sidebar {
+  box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+}
+
+.sidebar.collapsed {
+  width: 68px !important;
+}
+
+.sidebar.collapsed .sidebar-text {
+  display: none;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 10px;
+}
+
+.nav-link {
+  color: #93c5fd;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+  background-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+.active-nav {
+  background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+}
+
+/* ====== 사이드바 아코디언 그룹 ====== */
+.nav-group-btn {
+  position: relative;
+}
+
+/* 열린 상태: 배경 살짝 강조 */
+.nav-group.open > .nav-group-btn {
+  background-color: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+/* 화살표 회전 */
+.nav-group.open > .nav-group-btn .nav-group-arrow {
+  transform: rotate(90deg);
+  color: #93c5fd;
+}
+
+/* 하위 메뉴 컨테이너: max-height 트랜지션으로 부드럽게 */
+.nav-group-menu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 서브 메뉴 들여쓰기 미세 조정 */
+.nav-sub {
+  font-size: 0.8125rem; /* 13px */
+}
+
+/* 활성 서브 아이템 */
+.nav-group.open .nav-sub.active-nav {
+  background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+}
+
+/* 사이드바 collapsed 시 그룹 버튼 아이콘만 */
+.sidebar.collapsed .nav-group-btn {
+  justify-content: center;
+  padding: 10px;
+}
+
+.sidebar.collapsed .nav-group-menu {
+  max-height: 0 !important;
+}
+
+/* ====== 메인 콘텐츠 ====== */
+.main-content {
+  min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.collapsed {
+  margin-left: 68px !important;
+}
+
+/* ====== 통계 카드 ====== */
+.stat-card {
+  cursor: default;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+}
+
+/* ====== 폼 스타일 ====== */
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ====== 배지 ====== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badge-입고    { background: #dbeafe; color: #1d4ed8; }
+.badge-사용중   { background: #dcfce7; color: #15803d; }
+.badge-반출    { background: #fed7aa; color: #c2410c; }
+.badge-반납    { background: #e0e7ff; color: #4338ca; }
+.badge-수리중   { background: #fef9c3; color: #a16207; }
+.badge-폐기    { background: #fee2e2; color: #b91c1c; }
+.badge-매각    { background: #f3e8ff; color: #7e22ce; }
+.badge-분실    { background: #fce7f3; color: #9d174d; }
+
+/* ====== 모달 ====== */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.modal-overlay > div {
+  animation: slideUp 0.25s ease;
+}
+
+/* ====== 테이블 ====== */
+table th {
+  letter-spacing: 0.04em;
+  background: #f8fafc;
+}
+
+table tr:hover td {
+  background: #f8fafc;
+}
+
+table td {
+  padding: 10px 16px;
+  color: #374151;
+  vertical-align: middle;
+  font-size: 0.8125rem;
+}
+
+/* ====== 토스트 알림 ====== */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 280px;
+  max-width: 380px;
+  animation: slideInRight 0.3s ease;
+  cursor: pointer;
+}
+
+.toast-success { background: #065f46; color: #fff; }
+.toast-error   { background: #991b1b; color: #fff; }
+.toast-info    { background: #1e40af; color: #fff; }
+.toast-warning { background: #92400e; color: #fff; }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}
+
+.toast.removing {
+  animation: slideOutRight 0.3s ease forwards;
+}
+
+/* ====== 페이지 섹션 ====== */
+.page-section {
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ====== 페이지네이션 ====== */
+.page-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.page-btn:hover { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
+.page-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+/* ====== 디테일 카드 ====== */
+.detail-section {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.detail-section h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 5px 0;
+  font-size: 0.8125rem;
+  gap: 8px;
+}
+
+.detail-label {
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: #111827;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
+}
+
+/* ====== 스크롤바 커스텀 ====== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ====== 로딩 스피너 ====== */
+.spinner {
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ====== 액션 버튼 ====== */
+.action-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+}
+
+.btn-view    { background:#eff6ff; color:#3b82f6; }
+.btn-view:hover    { background:#dbeafe; }
+.btn-edit    { background:#f0fdf4; color:#16a34a; }
+.btn-edit:hover    { background:#dcfce7; }
+.btn-checkout { background:#fff7ed; color:#c2410c; }
+.btn-checkout:hover { background:#fed7aa; }
+.btn-return   { background:#eef2ff; color:#4338ca; }
+.btn-return:hover   { background:#e0e7ff; }
+.btn-repair   { background:#fefce8; color:#a16207; }
+.btn-repair:hover   { background:#fef9c3; }
+.btn-dispose  { background:#fef2f2; color:#b91c1c; }
+.btn-dispose:hover  { background:#fee2e2; }
+.btn-sell     { background:#faf5ff; color:#7c3aed; }
+.btn-sell:hover     { background:#f3e8ff; }
+.btn-restore  { background:#f0fdf4; color:#15803d; }
+.btn-restore:hover  { background:#dcfce7; }
+
+/* ====== 이력 타임라인 ====== */
+.history-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.hbadge-입고    { background:#dbeafe; color:#1d4ed8; }
+.hbadge-반출    { background:#fed7aa; color:#c2410c; }
+.hbadge-반납    { background:#e0e7ff; color:#4338ca; }
+.hbadge-수리의뢰  { background:#fef9c3; color:#a16207; }
+.hbadge-수리완료  { background:#dcfce7; color:#166534; }
+.hbadge-폐기    { background:#fee2e2; color:#b91c1c; }
+.hbadge-매각    { background:#f3e8ff; color:#7e22ce; }
+.hbadge-사용자변경 { background:#ccfbf1; color:#0f766e; }
+.hbadge-위치변경  { background:#e0f2fe; color:#0369a1; }
+.hbadge-상태변경  { background:#f0fdf4; color:#15803d; }
+.hbadge-분실신고  { background:#fce7f3; color:#9d174d; }
+
+/* ====== 보증 만료 상태 ====== */
+.warranty-expired { background: #fee2e2 !important; }
+.warranty-30d     { background: #fff7ed !important; }
+.warranty-90d     { background: #fefce8 !important; }
+
+/* ====== 모바일 반응형 ====== */
+@media (max-width: 768px) {
+  .sidebar { width: 68px !important; }
+  .sidebar .sidebar-text { display: none; }
+  .sidebar .nav-link { justify-content: center; padding: 10px; }
+  .main-content { margin-left: 68px !important; }
+}
+
+/* ====== 검색하이라이트 ====== */
+.highlight {
+  background: #fef9c3;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+/* ====== 카드 호버 ====== */
+.hover-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+}
+
+/* ====== 카테고리 관리 탭 ====== */
+.cat-tab {
+  background: #f9fafb;
+  color: #6b7280;
+  border-color: #e5e7eb;
+  transition: all 0.15s;
+}
+.cat-tab:hover { background: #f3f4f6; color: #374151; }
+.active-cat-tab {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+  font-weight: 700;
+}
+
+/* ====== 권한 토글 스위치 ====== */
+.perm-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.perm-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.perm-slider {
+  position: absolute;
+  inset: 0;
+  background: #d1d5db;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.perm-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.perm-toggle input:checked + .perm-slider {
+  background: #22c55e;
+}
+
+.perm-toggle input:checked + .perm-slider::before {
+  transform: translateX(18px);
+}
+
+.perm-toggle input:focus-visible + .perm-slider {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ====== 대시보드 탭 ====== */
+.dash-tab {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+.dash-tab:hover { background: #e2e8f0; }
+.dash-tab.active-tab {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+}
+
+/* ====== 구독 배지 ====== */
+.sub-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.sub-badge-활성     { background:#dcfce7; color:#15803d; }
+.sub-badge-일시정지  { background:#fef9c3; color:#a16207; }
+.sub-badge-해지     { background:#fee2e2; color:#b91c1c; }
+.sub-badge-갱신검토  { background:#e0e7ff; color:#4338ca; }
+.sub-badge-만료임박  { background:#fed7aa; color:#c2410c; }
+
+/* ====== 카테고리 배지 ====== */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cat-클라우드  { background:#dbeafe; color:#1e40af; }
+.cat-SaaS     { background:#e0e7ff; color:#3730a3; }
+.cat-보안      { background:#fee2e2; color:#991b1b; }
+.cat-개발도구   { background:#d1fae5; color:#065f46; }
+.cat-도메인    { background:#fef3c7; color:#92400e; }
+.cat-라이선스   { background:#f3e8ff; color:#6b21a8; }
+.cat-AI       { background:#ccfbf1; color:#0f766e; }
+.cat-기타      { background:#f1f5f9; color:#475569; }
+
+/* ====== 갱신 임박 상태 행 ====== */
+.renewal-expired { background: #fff1f2 !important; }
+.renewal-30d     { background: #fff7ed !important; }
+.renewal-90d     { background: #fefce8 !important; }
+
+/* ====== 비용 프로그레스 바 ====== */
+.cost-bar-wrap {
+  background: #e5e7eb;
+  border-radius: 9999px;
+  height: 8px;
+  overflow: hidden;
+}
+.cost-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s ease;
+}
+
+/* ====== 구독 상세 ====== */
+.sub-detail-header {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-radius: 14px;
+  padding: 20px;
+  color: white;
+  margin-bottom: 16px;
+}
+
+/* ====== 갱신 뱃지 ====== */
+.renewal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.renewal-expired-badge { background:#fee2e2; color:#991b1b; }
+.renewal-30d-badge     { background:#fed7aa; color:#c2410c; }
+.renewal-90d-badge     { background:#fef9c3; color:#a16207; }
+.renewal-ok-badge      { background:#dcfce7; color:#15803d; }
