@@ -717,11 +717,18 @@
 
     try {
       const chkRes  = await fetch(
-        `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(fullEmail)}&limit=1`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        `${SUPABASE_URL}/rest/v1/rpc/email_exists`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'apikey':        SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify({ p_email: fullEmail }),
+        }
       );
-      const chkData = await chkRes.json();
-      const exists  = Array.isArray(chkData) && chkData.length > 0;
+      const exists  = await chkRes.json(); // true/false
       if (exists) {
         showAlert('regAlert', `이미 가입된 이메일입니다: ${fullEmail}`, 'err');
         setWrapState('regEmailWrap', 'err');
