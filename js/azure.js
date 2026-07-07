@@ -6,7 +6,8 @@
 const AZ_RES_TBL  = 'azure_resources';
 const AZ_LIC_TBL  = 'azure_licenses';
 const AZ_COST_TBL = 'azure_costs';
-const AZ_USERS_TBL = 'users';
+const AZ_USERS_TBL  = 'users';
+const AZ_USERS_VIEW = 'users_directory'; // 비밀번호 제외 안전한 조회용 뷰
 
 let allAzureResources  = [];
 let filteredAzureRes   = [];
@@ -1019,7 +1020,7 @@ async function loadAdminUsers() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">로딩 중...</td></tr>`;
 
   try {
-    const data = await azApiFetch(`${AZ_USERS_TBL}?limit=500`);
+    const data = await azApiFetch(`${AZ_USERS_VIEW}?limit=500`);
     const users = (data?.data || []).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
     if (!tbody) return;
@@ -1109,7 +1110,7 @@ function collectPermFromToggles(prefix) {
 }
 
 function openAdminUserModal(userId) {
-  azApiFetch(`${AZ_USERS_TBL}/${userId}`).then(u => {
+  azApiFetch(`${AZ_USERS_VIEW}/${userId}`).then(u => {
     document.getElementById('adminEditUserId').value = userId;
     document.getElementById('adm_full_name').value   = u.full_name || '';
     document.getElementById('adm_email').value       = u.email || u.username || '';
@@ -1144,20 +1145,40 @@ async function saveAdminUser() {
   }
 
   const payload = {
-    role,
-    department:  document.getElementById('adm_department')?.value?.trim(),
-    active:      document.getElementById('adm_active')?.value === 'true',
-    permissions: JSON.stringify(perms),
+    p_id:          userId,
+    p_role:        role,
+    p_department:  document.getElementById('adm_department')?.value?.trim(),
+    p_active:      document.getElementById('adm_active')?.value === 'true',
+    p_permissions: JSON.stringify(perms),
   };
 
   try {
-    await azApiFetch(`${AZ_USERS_TBL}/${userId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    await callUsersRpc('admin_update_user', payload);
     showToast('계정 정보가 수정되었습니다.', 'success');
     closeModal('adminUserModal');
     await loadAdminUsers();
   } catch (e) {
     showToast('저장 실패: ' + e.message, 'error');
   }
+}
+
+// users 테이블 관련 관리자 전용 RPC 호출 공통 헬퍼
+// (비밀번호는 절대 건드리지 않는 안전한 함수들만 호출한다)
+async function callUsersRpc(fnName, params) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`서버 오류 ${res.status}: ${errText}`);
+  }
+  try { return await res.json(); } catch { return null; }
 }
 
 async function deleteAdminUser(userId, name) {
@@ -1169,7 +1190,7 @@ async function deleteAdminUser(userId, name) {
   }
   if (!confirm(`'${name}' 계정을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
   try {
-    await azApiFetch(`${AZ_USERS_TBL}/${userId}`, { method: 'DELETE' });
+    await callUsersRpc('admin_delete_user', { p_id: userId });
     showToast(`'${name}' 계정이 삭제되었습니다.`, 'success');
     closeModal('adminUserModal');
     await loadAdminUsers();
@@ -1211,13 +1232,17 @@ async function saveNewUser() {
   }
 
   const payload = {
-    full_name, email, username, password, role, department,
-    active:      true,
-    permissions: JSON.stringify(perms),
+    p_full_name:   full_name,
+    p_email:       email,
+    p_username:    username,
+    p_password:    password,
+    p_role:        role,
+    p_department:  department,
+    p_permissions: JSON.stringify(perms),
   };
 
   try {
-    await azApiFetch(AZ_USERS_TBL, { method: 'POST', body: JSON.stringify(payload) });
+    await callUsersRpc('admin_create_user', payload);
     showToast(`'${full_name}' 계정이 추가되었습니다.`, 'success');
     closeModal('createUserModal');
     await loadAdminUsers();
