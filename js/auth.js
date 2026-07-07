@@ -83,16 +83,17 @@ const AuthManager = (() => {
       full_name:  user.full_name,
       role:       user.role,
       department: user.department || '',
+      is_admin:   user.is_admin === true,
       loginAt:    Date.now(),
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
   }
 
-  /* ── admin 여부 ── */
+  /* ── admin 여부 (role이 admin이거나, 별도로 is_admin 권한을 부여받은 경우) ── */
   function isAdmin() {
     const s = getSession();
-    return !!(s && s.role === 'admin');
+    return !!(s && (s.role === 'admin' || s.is_admin === true));
   }
 
   return { isLoggedIn, getCurrentUser, logout, requireAuth, login, isAdmin };
