@@ -428,30 +428,37 @@
       return;
     }
 
-    /* ── Cloudflare Access 자동 로그인 시도 ──
-       Access 게이트(workers.dev)를 통해 들어온 경우에만 이 API가 존재하고
-       성공한다. 예전 github.io 주소로 직접 들어온 경우엔 이 요청이
-       실패/404 처리되어 조용히 아래 일반 로그인 폼으로 넘어간다. */
-    try {
-      const res = await fetch('/api/auto-login', { credentials: 'same-origin' });
-      if (res.ok) {
-        const user = await res.json();
-        const session = {
-          id:         user.id,
-          email:      user.email,
-          username:   user.email,
-          full_name:  user.full_name,
-          role:       user.role,
-          department: user.department || '',
-          is_admin:   user.is_admin === true,
-          loginAt:    Date.now(),
-        };
-        sessionStorage.setItem('ams_session', JSON.stringify(session));
-        window.location.replace('index.html');
-        return;
+    /* ── 방금 로그아웃했다면, 자동 로그인을 한 번 건너뛴다 ──
+       (안 그러면 Cloudflare Access 세션이 살아있어서 즉시 재로그인되어버림) */
+    if (sessionStorage.getItem('just_logged_out')) {
+      sessionStorage.removeItem('just_logged_out');
+    } else {
+      /* ── Cloudflare Access 자동 로그인 시도 ──
+         Access 게이트(workers.dev)를 통해 들어온 경우에만 이 API가 존재하고
+         성공한다. 예전 github.io 주소로 직접 들어온 경우엔 이 요청이
+         실패/404 처리되어 조용히 아래 일반 로그인 폼으로 넘어간다. */
+      try {
+        const res = await fetch('/api/auto-login', { credentials: 'same-origin' });
+        if (res.ok) {
+          const user = await res.json();
+          const session = {
+            id:          user.id,
+            email:       user.email,
+            username:    user.email,
+            full_name:   user.full_name,
+            role:        user.role,
+            department:  user.department || '',
+            is_admin:    user.is_admin === true,
+            permissions: user.permissions || null,
+            loginAt:     Date.now(),
+          };
+          sessionStorage.setItem('ams_session', JSON.stringify(session));
+          window.location.replace('index.html');
+          return;
+        }
+      } catch (e) {
+        // 자동 로그인 API가 없는 경로 → 무시하고 일반 로그인 폼 표시
       }
-    } catch (e) {
-      // 자동 로그인 API가 없는 경로 → 무시하고 일반 로그인 폼 표시
     }
 
     // 저장된 이메일 앞자리 복원

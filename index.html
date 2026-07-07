@@ -157,8 +157,8 @@
           <span id="headerUserRole" class="text-xs px-2 py-0.5 rounded-full font-semibold role-chip">-</span>
         </div>
         <button onclick="exportExcel()" class="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"><i class="fas fa-file-excel"></i><span class="hidden sm:inline">Excel</span></button>
-        <button onclick="openModal('registerModal')" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><i class="fas fa-plus"></i><span class="hidden sm:inline">자산 등록</span></button>
-        <button onclick="openModal('subRegisterModal')" class="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"><i class="fas fa-credit-card"></i><span class="hidden sm:inline">구독 등록</span></button>
+        <button id="headerBtnAssetRegister" onclick="openModal('registerModal')" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><i class="fas fa-plus"></i><span class="hidden sm:inline">자산 등록</span></button>
+        <button id="headerBtnSubRegister" onclick="openModal('subRegisterModal')" class="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"><i class="fas fa-credit-card"></i><span class="hidden sm:inline">구독 등록</span></button>
         <button onclick="AuthManager.logout()" class="flex items-center gap-1.5 px-3 py-2 bg-gray-200 text-gray-600 text-sm rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors" title="로그아웃">
           <i class="fas fa-sign-out-alt"></i><span class="hidden sm:inline">로그아웃</span>
         </button>
