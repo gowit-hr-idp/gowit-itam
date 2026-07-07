@@ -264,13 +264,17 @@ function switchDashTab(tab) {
   const assetDiv = document.getElementById('dash-asset');
   const subDiv   = document.getElementById('dash-sub');
   const promoDiv = document.getElementById('dash-promo');
+  const azureDiv = document.getElementById('dash-azure');
+  const aiDiv    = document.getElementById('dash-ai');
   const tabAsset = document.getElementById('dashTab-asset');
   const tabSub   = document.getElementById('dashTab-sub');
   const tabPromo = document.getElementById('dashTab-promo');
+  const tabAzure = document.getElementById('dashTab-azure');
+  const tabAi    = document.getElementById('dashTab-ai');
 
   // 전체 숨김
-  [assetDiv, subDiv, promoDiv].forEach(d => d && d.classList.add('hidden'));
-  [tabAsset, tabSub, tabPromo].forEach(t => t && t.classList.remove('active-tab'));
+  [assetDiv, subDiv, promoDiv, azureDiv, aiDiv].forEach(d => d && d.classList.add('hidden'));
+  [tabAsset, tabSub, tabPromo, tabAzure, tabAi].forEach(t => t && t.classList.remove('active-tab'));
 
   if (tab === 'asset') {
     assetDiv && assetDiv.classList.remove('hidden');
@@ -283,6 +287,14 @@ function switchDashTab(tab) {
     promoDiv && promoDiv.classList.remove('hidden');
     tabPromo && tabPromo.classList.add('active-tab');
     if (typeof renderPromoDashboardTab === 'function') renderPromoDashboardTab();
+  } else if (tab === 'azure') {
+    azureDiv && azureDiv.classList.remove('hidden');
+    tabAzure && tabAzure.classList.add('active-tab');
+    if (typeof renderAzureMainDashTab === 'function') renderAzureMainDashTab();
+  } else if (tab === 'ai') {
+    aiDiv && aiDiv.classList.remove('hidden');
+    tabAi && tabAi.classList.add('active-tab');
+    if (typeof renderAiLicMainDashTab === 'function') renderAiLicMainDashTab();
   }
 }
 

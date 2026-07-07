@@ -16,6 +16,10 @@ let filteredAzureCosts = [];
 
 let azCostByServiceChart  = null;
 let azResourceTypeChart   = null;
+let azLicTypeChart        = null;
+let dashAzCostChartInst    = null;
+let dashAzResTypeChartInst = null;
+let dashAiLicTypeChartInst = null;
 
 // ============================================================
 // 공통 API 헬퍼 (supabase.js의 azApiFetch 사용)
@@ -61,8 +65,6 @@ async function renderAzureDashboard() {
     setEl('az-stat-total-usd',     `USD $${totalCostUsd.toLocaleString(undefined, {maximumFractionDigits:2})}`);
     setEl('az-stat-resources',     allAzureResources.length);
     setEl('az-stat-resources-running', `Running ${runningCount}개`);
-    setEl('az-stat-licenses',      allAzureLicenses.length + '종');
-    setEl('az-stat-licenses-used', `사용 시트 ${usedSeats.toLocaleString()}개`);
     setEl('az-stat-budget-pct',    budgetPct + ' %');
     setEl('az-stat-budget-remain',
       budgetRemain >= 0 ? `잔여 ₩${budgetRemain.toLocaleString()}` : `초과 ₩${Math.abs(budgetRemain).toLocaleString()}`);
@@ -156,6 +158,125 @@ function renderAzResourceTypeChart() {
 function setEl(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+// ============================================================
+// 메인 대시보드 - Azure 탭
+// (사이드바 메뉴 구성과 동일하게 메인 홈 대시보드에도 노출)
+// ============================================================
+async function renderAzureMainDashTab() {
+  try {
+    const [resData, costData] = await Promise.all([
+      azApiFetch(`${AZ_RES_TBL}?limit=1000`),
+      azApiFetch(`${AZ_COST_TBL}?limit=1000`),
+    ]);
+    const resources = resData?.data || [];
+    const costs     = costData?.data || [];
+
+    const totalCostKrw = costs.reduce((s, c) => s + (Number(c.actual_cost_krw) || 0), 0);
+    const totalBudget  = costs.reduce((s, c) => s + (Number(c.budget_krw) || 0), 0);
+    const budgetPct    = totalBudget > 0 ? Math.round((totalCostKrw / totalBudget) * 100) : 0;
+
+    setEl('dashaz-stat-cost',      '₩' + totalCostKrw.toLocaleString());
+    setEl('dashaz-stat-resources', resources.length);
+    setEl('dashaz-stat-budget',    budgetPct + '%');
+
+    // 서비스별 비용 (막대)
+    const costCtx = document.getElementById('dashAzCostChart');
+    if (costCtx) {
+      if (dashAzCostChartInst) { dashAzCostChartInst.destroy(); dashAzCostChartInst = null; }
+      const map = {};
+      costs.forEach(c => { const k = c.service_name || '기타'; map[k] = (map[k]||0) + (Number(c.actual_cost_krw)||0); });
+      const sorted = Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      if (sorted.length) {
+        dashAzCostChartInst = new Chart(costCtx, {
+          type: 'bar',
+          data: { labels: sorted.map(s=>s[0]), datasets: [{ data: sorted.map(s=>s[1]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c => '₩'+c.raw.toLocaleString() } } } },
+        });
+      }
+    }
+
+    // 리소스 타입별 (도넛)
+    const resCtx = document.getElementById('dashAzResTypeChart');
+    if (resCtx) {
+      if (dashAzResTypeChartInst) { dashAzResTypeChartInst.destroy(); dashAzResTypeChartInst = null; }
+      const map = {};
+      resources.forEach(r => { const k = r.resource_type || '기타'; map[k] = (map[k]||0)+1; });
+      const entries = Object.entries(map).sort((a,b) => b[1]-a[1]);
+      if (entries.length) {
+        const colors = ['#3b82f6','#6366f1','#8b5cf6','#a855f7','#ec4899','#f59e0b','#10b981','#06b6d4'];
+        dashAzResTypeChartInst = new Chart(resCtx, {
+          type: 'doughnut',
+          data: { labels: entries.map(e=>e[0]), datasets: [{ data: entries.map(e=>e[1]), backgroundColor: colors, borderWidth:2, borderColor:'#fff' }] },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:12 } } }, cutout:'60%' },
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Azure 대시보드 탭 로드 실패:', e);
+  }
+}
+
+// ============================================================
+// 메인 대시보드 - AI 라이선스 탭
+// ============================================================
+async function renderAiLicMainDashTab() {
+  try {
+    const data = await azApiFetch(`${AZ_LIC_TBL}?limit=1000`);
+    const licenses = data?.data || [];
+
+    const totalSeats = licenses.reduce((s,l) => s + (Number(l.total_seats)||0), 0);
+    const usedSeats  = licenses.reduce((s,l) => s + (Number(l.used_seats)||0), 0);
+    const monthlyCost = licenses.reduce((s,l) => s + (Number(l.unit_price_krw)||0) * (Number(l.total_seats)||0), 0);
+    const expiring = licenses
+      .filter(l => l.contract_end)
+      .map(l => ({ ...l, days: Math.ceil((new Date(l.contract_end) - new Date()) / 86400000) }))
+      .filter(l => l.days >= 0 && l.days <= 60)
+      .sort((a,b) => a.days - b.days);
+
+    setEl('dashai-stat-total',    licenses.length + '종');
+    setEl('dashai-stat-seats',    `${usedSeats.toLocaleString()} / ${totalSeats.toLocaleString()}`);
+    setEl('dashai-stat-cost',     '₩' + monthlyCost.toLocaleString());
+    setEl('dashai-stat-expiring', expiring.length);
+
+    const ctx = document.getElementById('dashAiLicTypeChart');
+    if (ctx) {
+      if (dashAiLicTypeChartInst) { dashAiLicTypeChartInst.destroy(); dashAiLicTypeChartInst = null; }
+      const map = {};
+      licenses.forEach(l => {
+        const key = l.license_type || '기타';
+        map[key] = (map[key]||0) + (Number(l.unit_price_krw)||0) * (Number(l.total_seats)||0);
+      });
+      const entries = Object.entries(map).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+      if (entries.length) {
+        const colors = ['#8b5cf6','#3b82f6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#84cc16'];
+        dashAiLicTypeChartInst = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: entries.map(e=>e[0]), datasets: [{ data: entries.map(e=>e[1]), backgroundColor: colors, borderWidth:2, borderColor:'#fff' }] },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:12 } }, tooltip:{ callbacks:{ label: c => `${c.label}: ₩${c.raw.toLocaleString()}` } } }, cutout:'60%' },
+        });
+      }
+    }
+
+    const box = document.getElementById('dashAiLicExpiring');
+    if (box) {
+      if (!expiring.length) {
+        box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">만료 임박 라이선스가 없습니다.</div>`;
+      } else {
+        box.innerHTML = expiring.map(l => `
+          <div class="flex items-center justify-between px-3 py-2 rounded-lg ${l.days <= 14 ? 'bg-red-50' : 'bg-orange-50'}">
+            <div>
+              <div class="text-sm font-semibold text-gray-800">${l.license_name || '-'}</div>
+              <div class="text-xs text-gray-500">${l.license_type || ''} · 만료 ${l.contract_end}</div>
+            </div>
+            <span class="text-xs font-bold ${l.days <= 14 ? 'text-red-600' : 'text-orange-600'}">D-${l.days}</span>
+          </div>`).join('');
+      }
+    }
+  } catch (e) {
+    console.warn('AI 라이선스 대시보드 탭 로드 실패:', e);
+  }
 }
 
 function getAzCatBadge(cat) {
@@ -400,6 +521,8 @@ async function renderAzureLicenses() {
     allAzureLicenses = data?.data || [];
     renderAzureLicSummary();
     renderAzureLicTable();
+    renderAzLicTypeChart();
+    renderAzLicExpiringList();
   } catch (e) {
     showToast('라이선스 데이터 로드 실패: ' + e.message, 'error');
   }
@@ -439,6 +562,65 @@ function renderAzureLicSummary() {
       <div class="text-2xl font-bold text-red-700">${expiringSoon}건 <i class="fas fa-exclamation-triangle text-base"></i></div>
     </div>` : ''}
   `;
+}
+
+// AI 서비스(license_type)별 월 비용 분포 도넛차트
+function renderAzLicTypeChart() {
+  const ctx = document.getElementById('azLicTypeChart');
+  if (!ctx) return;
+  if (azLicTypeChart) { azLicTypeChart.destroy(); azLicTypeChart = null; }
+
+  const map = {};
+  allAzureLicenses.forEach(l => {
+    const key = l.license_type || '기타';
+    const cost = (Number(l.unit_price_krw) || 0) * (Number(l.total_seats) || 0);
+    map[key] = (map[key] || 0) + cost;
+  });
+  const entries = Object.entries(map).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return;
+
+  const colors = ['#8b5cf6','#3b82f6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#84cc16'];
+  azLicTypeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: entries.map(e => e[0]),
+      datasets: [{ data: entries.map(e => e[1]), backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => `${c.label}: ₩${c.raw.toLocaleString()}` } },
+      },
+      cutout: '60%',
+    },
+  });
+}
+
+// 60일 이내 계약 만료 예정 라이선스 목록
+function renderAzLicExpiringList() {
+  const box = document.getElementById('azLicExpiringList');
+  if (!box) return;
+
+  const items = allAzureLicenses
+    .filter(l => l.contract_end)
+    .map(l => ({ ...l, days: Math.ceil((new Date(l.contract_end) - new Date()) / 86400000) }))
+    .filter(l => l.days >= 0 && l.days <= 60)
+    .sort((a, b) => a.days - b.days);
+
+  if (!items.length) {
+    box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">만료 임박 라이선스가 없습니다.</div>`;
+    return;
+  }
+
+  box.innerHTML = items.map(l => `
+    <div class="flex items-center justify-between px-3 py-2 rounded-lg ${l.days <= 14 ? 'bg-red-50' : 'bg-orange-50'}">
+      <div>
+        <div class="text-sm font-semibold text-gray-800">${l.license_name || '-'}</div>
+        <div class="text-xs text-gray-500">${l.license_type || ''} · 만료 ${l.contract_end}</div>
+      </div>
+      <span class="text-xs font-bold ${l.days <= 14 ? 'text-red-600' : 'text-orange-600'}">D-${l.days}</span>
+    </div>`).join('');
 }
 
 function renderAzureLicTable() {
