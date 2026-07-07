@@ -7,7 +7,6 @@ const AZ_RES_TBL  = 'azure_resources';
 const AZ_LIC_TBL  = 'azure_licenses';
 const AZ_COST_TBL = 'azure_costs';
 const AZ_USERS_TBL  = 'users';
-const AZ_USERS_VIEW = 'users_directory'; // 비밀번호 제외 안전한 조회용 뷰
 
 let allAzureResources  = [];
 let filteredAzureRes   = [];
@@ -1020,8 +1019,8 @@ async function loadAdminUsers() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">로딩 중...</td></tr>`;
 
   try {
-    const data = await azApiFetch(`${AZ_USERS_VIEW}?limit=500`);
-    const users = (data?.data || []).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+    const rows = await callUsersRpc('admin_list_users', {});
+    const users = (rows || []).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
     if (!tbody) return;
     if (!users.length) {
@@ -1110,7 +1109,9 @@ function collectPermFromToggles(prefix) {
 }
 
 function openAdminUserModal(userId) {
-  azApiFetch(`${AZ_USERS_VIEW}/${userId}`).then(u => {
+  callUsersRpc('admin_get_user', { p_id: userId }).then(rows => {
+    const u = Array.isArray(rows) ? rows[0] : null;
+    if (!u) { showToast('사용자 정보를 찾을 수 없습니다.', 'error'); return; }
     document.getElementById('adminEditUserId').value = userId;
     document.getElementById('adm_full_name').value   = u.full_name || '';
     document.getElementById('adm_email').value       = u.email || u.username || '';

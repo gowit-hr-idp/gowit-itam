@@ -29,7 +29,10 @@ const AuthManager = (() => {
   /* ── 로그아웃 ── */
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
-    window.location.replace('login.html');
+    // Cloudflare Access 세션도 같이 지워야 한다.
+    // (안 지우면 login.html의 자동 로그인 기능이 즉시 다시 로그인시켜버려서
+    //  '로그아웃해도 계속 튕겨서 홈으로 돌아오는' 현상이 생긴다)
+    window.location.replace('/cdn-cgi/access/logout');
   }
 
   /* ── 인증 가드 ── */
