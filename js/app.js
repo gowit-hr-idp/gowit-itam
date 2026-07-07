@@ -20,6 +20,36 @@ let statusChartInstance   = null;
 let categoryChartInstance = null;
 
 // ============================================================
+// 메뉴별 접근 권한 (관리자 콘솔 > 계정 관리에서 설정한 값 반영)
+// ============================================================
+const PAGE_PERMISSION_GROUP = {
+  assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
+  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets',
+  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
+  'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
+  'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
+};
+
+// 사이드바에서 열람 권한이 없는 메뉴 그룹을 숨긴다
+function applyMenuPermissions() {
+  ['assets', 'sub', 'promo', 'azure'].forEach(group => {
+    const navGroup = document.querySelector(`.nav-group[data-group="${group}"]`);
+    if (!navGroup) return;
+    if (!AuthManager.hasPermission(group, 'view')) {
+      navGroup.classList.add('hidden');
+    } else {
+      navGroup.classList.remove('hidden');
+    }
+  });
+
+  // 상단 빠른등록 버튼도 입력/수정 권한 없으면 숨김
+  const assetBtn = document.getElementById('headerBtnAssetRegister');
+  if (assetBtn) assetBtn.classList.toggle('hidden', !AuthManager.hasPermission('assets', 'write'));
+  const subBtn = document.getElementById('headerBtnSubRegister');
+  if (subBtn) subBtn.classList.toggle('hidden', !AuthManager.hasPermission('sub', 'write'));
+}
+
+// ============================================================
 // 초기화
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -41,6 +71,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sbName) sbName.textContent = displayName;
     if (sbRole) sbRole.textContent = `${user.email || ''} · ${user.role}`;
   }
+
+  applyMenuPermissions();
 
   await loadAllAssets();
   initNavigation();
@@ -143,6 +175,14 @@ function initNavigation() {
 }
 
 async function navigateTo(page) {
+  // 열람 권한 확인 (사이드바에서 숨겨도 URL/콘솔 등으로 직접 이동을 시도할 수 있으므로 이중 확인)
+  const permGroup = PAGE_PERMISSION_GROUP[page];
+  if (permGroup && !AuthManager.hasPermission(permGroup, 'view')) {
+    showToast('이 메뉴에 대한 열람 권한이 없습니다.', 'error');
+    if (page !== 'dashboard') navigateTo('dashboard');
+    return;
+  }
+
   // 모든 섹션 숨김
   document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
   document.querySelectorAll('.nav-link').forEach(l => {
@@ -735,6 +775,10 @@ function openEditModal(id) {
 }
 
 async function saveAsset() {
+  if (!AuthManager.hasPermission('assets', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('editAssetId').value;
 
   const fields = ['asset_no','asset_category','asset_name','manufacturer','model_name',

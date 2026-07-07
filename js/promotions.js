@@ -133,6 +133,10 @@ function getPromoStatusBadge(status, stock, minStock) {
 // 판촉물 품목 신규 등록 + 입고 (입고 처리 페이지 인라인 폼)
 // ============================================================
 async function savePromoItem() {
+  if (!AuthManager.hasPermission('promo', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('editPromoId')?.value;
 
   const payload = {

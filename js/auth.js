@@ -29,10 +29,11 @@ const AuthManager = (() => {
   /* ── 로그아웃 ── */
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
-    // Cloudflare Access 세션도 같이 지워야 한다.
-    // (안 지우면 login.html의 자동 로그인 기능이 즉시 다시 로그인시켜버려서
-    //  '로그아웃해도 계속 튕겨서 홈으로 돌아오는' 현상이 생긴다)
-    window.location.replace('/cdn-cgi/access/logout');
+    // Cloudflare Access 세션(30일)은 그대로 살아있으므로,
+    // login.html의 자동 로그인이 즉시 다시 로그인시키지 않도록
+    // "방금 로그아웃했다"는 표시만 남기고 이동한다.
+    sessionStorage.setItem('just_logged_out', '1');
+    window.location.replace('login.html');
   }
 
   /* ── 인증 가드 ── */
@@ -80,14 +81,15 @@ const AuthManager = (() => {
 
     // 세션 저장
     const session = {
-      id:         user.id,
-      email:      user.email,
-      username:   user.email,          // 하위 호환 (app.js 에서 username 참조)
-      full_name:  user.full_name,
-      role:       user.role,
-      department: user.department || '',
-      is_admin:   user.is_admin === true,
-      loginAt:    Date.now(),
+      id:          user.id,
+      email:       user.email,
+      username:    user.email,          // 하위 호환 (app.js 에서 username 참조)
+      full_name:   user.full_name,
+      role:        user.role,
+      department:  user.department || '',
+      is_admin:    user.is_admin === true,
+      permissions: user.permissions || null,
+      loginAt:     Date.now(),
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
@@ -99,5 +101,22 @@ const AuthManager = (() => {
     return !!(s && (s.role === 'admin' || s.is_admin === true));
   }
 
-  return { isLoggedIn, getCurrentUser, logout, requireAuth, login, isAdmin };
+  /* ── 메뉴별 접근 권한 확인 ──
+     group: 'assets' | 'sub' | 'promo' | 'azure'
+     type:  'view' | 'write'
+     admin은 항상 전체 허용. permissions가 없으면(구버전 계정 등) 안전하게 열람은 허용,
+     입력/수정은 막지 않고 그대로 허용한다(기존 동작 유지, 하위호환). */
+  function hasPermission(group, type) {
+    if (isAdmin()) return true;
+    const s = getSession();
+    if (!s) return false;
+    if (!s.permissions) return true; // permissions 미설정 계정은 기존처럼 전체 허용
+    let perms;
+    try { perms = typeof s.permissions === 'string' ? JSON.parse(s.permissions) : s.permissions; }
+    catch { return true; }
+    if (!perms || !perms[group]) return true;
+    return perms[group][type] !== false;
+  }
+
+  return { isLoggedIn, getCurrentUser, logout, requireAuth, login, isAdmin, hasPermission };
 })();

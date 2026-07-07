@@ -440,6 +440,10 @@ function openAzureResModal(id) {
 }
 
 async function saveAzureResource() {
+  if (!AuthManager.hasPermission('azure', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('azResEditId')?.value;
   const payload = {
     resource_name:    document.getElementById('azr_resource_name')?.value?.trim(),
@@ -877,6 +881,10 @@ function openAzureCostModal(id) {
 }
 
 async function saveAzureCost() {
+  if (!AuthManager.hasPermission('azure', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('azCostEditId')?.value;
   const payload = {
     period:          document.getElementById('azc_period')?.value,

@@ -450,6 +450,10 @@ function openSubEditModal(id) {
 }
 
 async function saveSubscription() {
+  if (!AuthManager.hasPermission('sub', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('editSubId').value;
 
   const fields = ['service_name','category','vendor','description','billing_cycle','currency',
