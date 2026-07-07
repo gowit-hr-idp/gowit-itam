@@ -213,6 +213,7 @@ async function navigateTo(page) {
       await loadAllPromoItems();
       populatePromoInItemList();
       initPromoInOutDefaults();
+      refreshAllCategoryDropdowns();
       switchPromoInTab('existing');
       break;
     case 'promo-out':
@@ -1224,11 +1225,76 @@ function exportExcel() {
 }
 
 // ============================================================
+// 카테고리(공통 코드) 동적 드롭다운 연동
+// 관리자 콘솔 > 카테고리 관리에서 등록/수정한 값이
+// 실제 등록 화면의 드롭다운에 그대로 반영되도록 한다.
+// 해당 그룹에 등록된 카테고리가 하나도 없으면(관리자가 아직 안 건드렸으면)
+// 기존 하드코딩 옵션을 그대로 유지한다(안전한 기본값).
+// ============================================================
+const CATEGORY_DROPDOWN_MAP = [
+  { selectId: 'f_asset_category',  group: 'assets'     },
+  { selectId: 'sf_category',       group: 'sub'        },
+  { selectId: 'pf_category',       group: 'promo'      },
+  { selectId: 'azr_service_group', group: 'azure'      },
+  { selectId: 'azl_license_type',  group: 'ai_license' },
+];
+
+async function loadAllCategoryRows() {
+  try {
+    const data = await apiFetch(`categories?limit=500`);
+    return data?.data || [];
+  } catch (e) {
+    console.warn('카테고리 목록 로드 실패:', e);
+    return [];
+  }
+}
+
+function fillSelectWithCategories(selectEl, rows, menuGroup) {
+  if (!selectEl) return;
+  const items = rows
+    .filter(c => c.menu_group === menuGroup && c.active !== false)
+    .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+  if (!items.length) return; // 등록된 카테고리 없으면 기존 옵션 유지
+
+  const keepValue = selectEl.value;
+  const firstOption = selectEl.querySelector('option');
+  const placeholderText = (firstOption && firstOption.value === '') ? firstOption.textContent : '선택하세요';
+
+  selectEl.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = placeholderText;
+  selectEl.appendChild(ph);
+
+  items.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.value;
+    opt.textContent = c.name;
+    selectEl.appendChild(opt);
+  });
+
+  if (keepValue) selectEl.value = keepValue;
+}
+
+async function refreshAllCategoryDropdowns() {
+  const rows = await loadAllCategoryRows();
+  if (!rows.length) return;
+  CATEGORY_DROPDOWN_MAP.forEach(({ selectId, group }) => {
+    fillSelectWithCategories(document.getElementById(selectId), rows, group);
+  });
+}
+
+// ============================================================
 // 모달 유틸
 // ============================================================
+const CATEGORY_REFRESH_MODALS = ['registerModal', 'subRegisterModal', 'azureResModal', 'azureLicModal'];
+
 function openModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove('hidden');
+  if (CATEGORY_REFRESH_MODALS.includes(id)) {
+    refreshAllCategoryDropdowns();
+  }
 }
 
 function closeModal(id) {
