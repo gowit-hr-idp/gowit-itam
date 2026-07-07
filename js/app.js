@@ -1237,8 +1237,14 @@ function closeModal(id) {
 }
 
 // 모달 외부 클릭 닫기
+let _modalMousedownOnOverlay = false;
+document.addEventListener('mousedown', e => {
+  _modalMousedownOnOverlay = e.target.classList.contains('modal-overlay');
+});
 document.addEventListener('click', e => {
-  if (e.target.classList.contains('modal-overlay')) {
+  // 텍스트 드래그 선택 중 마우스가 배경까지 밀려나가 놓이는 경우를 방지:
+  // 누른 시점과 뗀(클릭) 시점이 둘 다 배경(overlay) 자체였을 때만 모달을 닫는다.
+  if (e.target.classList.contains('modal-overlay') && _modalMousedownOnOverlay) {
     closeModal(e.target.id);
   }
 });
