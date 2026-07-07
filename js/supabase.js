@@ -8,7 +8,7 @@
 // Supabase 설정
 // ============================================================
 const SUPABASE_URL = 'https://lbcydtbbqasiyvqlfivc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiY3lkdGJicWFzaXl2cWxmaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5ODY5MTQsImV4cCI6MjA5ODU2MjkxNH0.oTsN920NDuFUFi6nz59amkvAmWg5ZsW_4hsR79TKhVs';
+const SUPABASE_KEY = 'sb_publishable_Jsx4rjVreEcfB9hmC7q3hg_zhJRZp-P';
 
 const SB_HEADERS = {
   'Content-Type':  'application/json',
@@ -29,6 +29,13 @@ const SB_HEADERS = {
 // ============================================================
 async function sbFetch(path, opts = {}) {
   const method = (opts.method || 'GET').toUpperCase();
+
+  // ── PUT → PATCH 변환 ──
+  // 이 앱은 "수정" 시 PUT을 쓰지만, PostgREST의 PUT은 행 전체 교체 방식이라
+  // 요청 본문에 반드시 id가 포함되어야 한다 (없으면 42703 pgrst_body.id 오류 발생).
+  // 우리는 폼에 있는 일부 필드만 보내는 "부분 수정"이 목적이므로,
+  // 실제 Supabase 요청은 PATCH(부분 수정)로 보낸다.
+  const httpMethod = (method === 'PUT') ? 'PATCH' : method;
 
   // ── path 파싱: "table_name?limit=100&search=xxx" 형태 처리 ──
   const [tablePart, queryStr] = path.split('?');
@@ -81,7 +88,7 @@ async function sbFetch(path, opts = {}) {
   }
 
   const fetchOpts = {
-    method,
+    method: httpMethod,
     headers,
   };
   if (opts.body) fetchOpts.body = opts.body;
