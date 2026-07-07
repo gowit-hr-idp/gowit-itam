@@ -1305,11 +1305,13 @@ let allCategories = [];
 let currentCatGroup = 'assets';
 
 const CAT_GROUP_LABELS = {
-  assets:     '고정자산 분류',
-  sub:        'IT정기결제 카테고리',
-  promo:      '판촉물 품목 분류',
-  azure:      'Azure 서비스 구분',
-  ai_license: 'AI 라이선스 서비스',
+  assets:        '고정자산 분류',
+  sub:           'IT정기결제 카테고리',
+  promo:         '판촉물 품목 분류',
+  azure:         'Azure 서비스 구분',
+  azure_restype: 'Azure 리소스 타입',
+  azure_costcat: 'Azure 비용 카테고리',
+  ai_license:    'AI 라이선스 서비스',
 };
 
 async function loadCategoryPage() {

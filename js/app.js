@@ -1244,11 +1244,14 @@ function exportExcel() {
 // 기존 하드코딩 옵션을 그대로 유지한다(안전한 기본값).
 // ============================================================
 const CATEGORY_DROPDOWN_MAP = [
-  { selectId: 'f_asset_category',  group: 'assets'     },
-  { selectId: 'sf_category',       group: 'sub'        },
-  { selectId: 'pf_category',       group: 'promo'      },
-  { selectId: 'azr_service_group', group: 'azure'      },
-  { selectId: 'azl_license_type',  group: 'ai_license' },
+  { selectId: 'f_asset_category',   group: 'assets'        },
+  { selectId: 'sf_category',        group: 'sub'           },
+  { selectId: 'pf_category',        group: 'promo'         },
+  { selectId: 'azr_service_group',  group: 'azure'         },
+  { selectId: 'azr_resource_type',  group: 'azure_restype' },
+  { selectId: 'azc_service_group',  group: 'azure'         },
+  { selectId: 'azc_category',       group: 'azure_costcat' },
+  { selectId: 'azl_license_type',   group: 'ai_license'    },
 ];
 
 async function loadAllCategoryRows() {
@@ -1299,7 +1302,7 @@ async function refreshAllCategoryDropdowns() {
 // ============================================================
 // 모달 유틸
 // ============================================================
-const CATEGORY_REFRESH_MODALS = ['registerModal', 'subRegisterModal', 'azureResModal', 'azureLicModal'];
+const CATEGORY_REFRESH_MODALS = ['registerModal', 'subRegisterModal', 'azureResModal', 'azureLicModal', 'azureCostModal'];
 
 function openModal(id) {
   const el = document.getElementById(id);
