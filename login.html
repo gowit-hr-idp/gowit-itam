@@ -443,6 +443,7 @@
           full_name:  user.full_name,
           role:       user.role,
           department: user.department || '',
+          is_admin:   user.is_admin === true,
           loginAt:    Date.now(),
         };
         sessionStorage.setItem('ams_session', JSON.stringify(session));
