@@ -111,11 +111,11 @@ async function loadAllAssets() {
 // 각 페이지가 속한 그룹 매핑
 const PAGE_GROUP_MAP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
-  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets',
-  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
-  'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
-  'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
-  'ai-licenses': 'ai_license',
+  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', 'assets-settings': 'assets',
+  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
+  'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
+  'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
+  'ai-licenses': 'ai_license', 'ai-settings': 'ai_license',
   'admin-users': 'admin', 'admin-categories': 'admin', 'admin-logs': 'admin',
 };
 
@@ -192,7 +192,11 @@ async function navigateTo(page) {
     l.classList.add('text-blue-200');
   });
 
-  const section = document.getElementById(`page-${page}`);
+  // 메뉴별 "설정"(구 카테고리 관리) 페이지들은 전부 같은 섹션을 공유한다
+  const SETTINGS_PAGES = ['assets-settings', 'sub-settings', 'promo-settings', 'azure-settings', 'ai-settings'];
+  const sectionKey = SETTINGS_PAGES.includes(page) ? 'admin-categories' : page;
+
+  const section = document.getElementById(`page-${sectionKey}`);
   if (section) section.classList.remove('hidden');
 
   const activeLink = document.querySelector(`[data-page="${page}"]`);
@@ -226,6 +230,11 @@ async function navigateTo(page) {
     'azure-resources': ['Azure 리소스 대장',   '홈 / Azure / 리소스 대장'],
     'azure-costs':     ['Azure 월별 비용대장', '홈 / Azure / 월별 비용대장'],
     'ai-licenses':     ['AI 라이선스 관리',    '홈 / AI 라이선스 / 라이선스 현황'],
+    'assets-settings': ['고정자산 관리 설정',  '홈 / 고정자산 관리 / 설정'],
+    'sub-settings':    ['IT정기결제 설정',     '홈 / IT 정기결제 / 설정'],
+    'promo-settings':  ['판촉물 관리 설정',    '홈 / 판촉물 관리 / 설정'],
+    'azure-settings':  ['Azure 관리 설정',     '홈 / Azure 관리 / 설정'],
+    'ai-settings':     ['AI 라이선스 설정',    '홈 / AI 라이선스 / 설정'],
     'admin-users':     ['계정 관리',            '홈 / 관리자 콘솔 / 계정 관리'],
     'admin-categories':['카테고리 관리',        '홈 / 관리자 콘솔 / 카테고리 관리'],
     'admin-logs':      ['접속 로그',            '홈 / 관리자 콘솔 / 접속 로그'],
@@ -271,6 +280,13 @@ async function navigateTo(page) {
     case 'admin-categories':
       if (!AuthManager.isAdmin()) { showToast('관리자 권한이 필요합니다.', 'error'); navigateTo('dashboard'); return; }
       await loadCategoryPage(); break;
+    case 'assets-settings':
+    case 'sub-settings':
+    case 'promo-settings':
+    case 'azure-settings':
+    case 'ai-settings':
+      if (!AuthManager.isAdmin()) { showToast('관리자 권한이 필요합니다.', 'error'); navigateTo('dashboard'); return; }
+      openCategorySettings(page); break;
     case 'admin-logs':
       if (!AuthManager.isAdmin()) { showToast('관리자 권한이 필요합니다.', 'error'); navigateTo('dashboard'); return; }
       renderAdminLogs(); break;

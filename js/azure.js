@@ -52,25 +52,32 @@ async function renderAzureDashboard() {
     allAzureCosts     = costData?.data  || [];
 
     // ── 요약 카드 ──
+    const periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
+    const latestPeriod = periods[periods.length - 1];
+    const prevPeriod    = periods[periods.length - 2];
     const totalCostKrw  = allAzureCosts.reduce((s, c) => s + (Number(c.actual_cost_krw) || 0), 0);
-    const totalCostUsd  = allAzureCosts.reduce((s, c) => s + (Number(c.actual_cost_usd) || 0), 0);
-    const totalBudget   = allAzureCosts.reduce((s, c) => s + (Number(c.budget_krw) || 0), 0);
+    const latestCostKrw = latestPeriod ? allAzureCosts.filter(c => c.period === latestPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
+    const prevCostKrw   = prevPeriod   ? allAzureCosts.filter(c => c.period === prevPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
+    const momDiff       = latestCostKrw - prevCostKrw;
     const runningCount  = allAzureResources.filter(r => r.status === 'Running').length;
-    const totalSeats    = allAzureLicenses.reduce((s, l) => s + (Number(l.total_seats)  || 0), 0);
-    const usedSeats     = allAzureLicenses.reduce((s, l) => s + (Number(l.used_seats)   || 0), 0);
-    const budgetPct     = totalBudget > 0 ? Math.round((totalCostKrw / totalBudget) * 100) : 0;
-    const budgetRemain  = totalBudget - totalCostKrw;
 
-    setEl('az-stat-total-cost',    '₩' + totalCostKrw.toLocaleString());
-    setEl('az-stat-total-usd',     `USD $${totalCostUsd.toLocaleString(undefined, {maximumFractionDigits:2})}`);
-    setEl('az-stat-resources',     allAzureResources.length);
+    setEl('az-stat-total-cost',   '₩' + totalCostKrw.toLocaleString());
+    setEl('az-stat-total-period', latestPeriod ? `최근월(${latestPeriod}) ₩${latestCostKrw.toLocaleString()}` : '데이터 없음');
+    setEl('az-stat-resources',    allAzureResources.length);
     setEl('az-stat-resources-running', `Running ${runningCount}개`);
-    setEl('az-stat-budget-pct',    budgetPct + ' %');
-    setEl('az-stat-budget-remain',
-      budgetRemain >= 0 ? `잔여 ₩${budgetRemain.toLocaleString()}` : `초과 ₩${Math.abs(budgetRemain).toLocaleString()}`);
+
+    if (periods.length >= 2) {
+      const sign = momDiff > 0 ? '+' : '';
+      setEl('az-stat-mom-change', `${sign}₩${momDiff.toLocaleString()}`);
+      setEl('az-stat-mom-label', `${prevPeriod} → ${latestPeriod}`);
+    } else {
+      setEl('az-stat-mom-change', '-');
+      setEl('az-stat-mom-label', '비교할 이전 월 데이터 없음');
+    }
 
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
+    renderAzCostServiceMomTable();
     renderAzResourceTypeChart();
 
     // ── 최근 비용 내역 ──
@@ -80,14 +87,13 @@ async function renderAzureDashboard() {
         .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
         .slice(0, 8);
       if (!recent.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-gray-400">데이터가 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-gray-400">데이터가 없습니다.</td></tr>`;
       } else {
         tbody.innerHTML = recent.map(c => `
           <tr class="hover:bg-blue-50/30 border-b border-gray-50">
             <td class="px-4 py-2.5 text-xs text-gray-500">${c.period || '-'}</td>
+            <td class="px-4 py-2.5 text-sm text-gray-700">${c.department || '-'}</td>
             <td class="px-4 py-2.5 font-medium text-gray-800 text-sm">${c.service_name || '-'}</td>
-            <td class="px-4 py-2.5">${getAzCatBadge(c.category)}</td>
-            <td class="px-4 py-2.5 text-right text-sm text-gray-600">$${Number(c.actual_cost_usd||0).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
             <td class="px-4 py-2.5 text-right text-sm font-semibold text-blue-700">₩${Number(c.actual_cost_krw||0).toLocaleString()}</td>
           </tr>`).join('');
       }
@@ -128,6 +134,52 @@ function renderAzCostByServiceChart() {
       },
     },
   });
+}
+
+// 서비스(품의서)별 당월-전월 증감 표 (월별 비용대장 피벗과 동일한 집계 기준 사용)
+function renderAzCostServiceMomTable() {
+  const tbody = document.getElementById('azCostServiceMomBody');
+  if (!tbody) return;
+
+  const periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
+  if (periods.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">데이터 없음</td></tr>`;
+    return;
+  }
+  const latest = periods[periods.length - 1];
+  const prev   = periods[periods.length - 2];
+
+  // 서비스별 당월/전월 합계 (allAzureCosts 기준 = 월별 비용대장과 동일 데이터)
+  const latestMap = {};
+  const prevMap   = {};
+  allAzureCosts.forEach(c => {
+    const key = c.service_name || '기타';
+    if (c.period === latest) latestMap[key] = (latestMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
+    if (prev && c.period === prev) prevMap[key] = (prevMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
+  });
+
+  const services = [...new Set([...Object.keys(latestMap), ...Object.keys(prevMap)])]
+    .sort((a, b) => (latestMap[b] || 0) - (latestMap[a] || 0));
+
+  if (!services.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">${latest} 데이터 없음</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = services.map(svc => {
+    const cur  = latestMap[svc] || 0;
+    const pv   = prevMap[svc]   || 0;
+    const diff = cur - pv;
+    const diffCls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
+    const diffTxt = prev ? `${diff > 0 ? '+' : ''}₩${diff.toLocaleString()}` : '-';
+    return `
+      <tr class="border-b border-gray-50">
+        <td class="py-1.5 text-gray-700">${svc}</td>
+        <td class="py-1.5 text-right font-semibold text-gray-800">₩${cur.toLocaleString()}</td>
+        <td class="py-1.5 text-right text-gray-400">${prev ? '₩'+pv.toLocaleString() : '-'}</td>
+        <td class="py-1.5 text-right ${diffCls}">${diffTxt}</td>
+      </tr>`;
+  }).join('');
 }
 
 function renderAzResourceTypeChart() {
@@ -174,12 +226,16 @@ async function renderAzureMainDashTab() {
     const costs     = costData?.data || [];
 
     const totalCostKrw = costs.reduce((s, c) => s + (Number(c.actual_cost_krw) || 0), 0);
-    const totalBudget  = costs.reduce((s, c) => s + (Number(c.budget_krw) || 0), 0);
-    const budgetPct    = totalBudget > 0 ? Math.round((totalCostKrw / totalBudget) * 100) : 0;
+    const periods = [...new Set(costs.map(c => c.period).filter(Boolean))].sort();
+    const latestPeriod = periods[periods.length - 1];
+    const prevPeriod   = periods[periods.length - 2];
+    const latestCostKrw = latestPeriod ? costs.filter(c=>c.period===latestPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
+    const prevCostKrw   = prevPeriod   ? costs.filter(c=>c.period===prevPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0)   : 0;
+    const momDiff = latestCostKrw - prevCostKrw;
 
     setEl('dashaz-stat-cost',      '₩' + totalCostKrw.toLocaleString());
     setEl('dashaz-stat-resources', resources.length);
-    setEl('dashaz-stat-budget',    budgetPct + '%');
+    setEl('dashaz-stat-mom', periods.length >= 2 ? `${momDiff>0?'+':''}₩${momDiff.toLocaleString()}` : '-');
 
     // 서비스별 비용 (막대)
     const costCtx = document.getElementById('dashAzCostChart');
@@ -1444,14 +1500,45 @@ let allCategories = [];
 let currentCatGroup = 'assets';
 
 const CAT_GROUP_LABELS = {
-  assets:        '고정자산 분류',
-  sub:           'IT정기결제 카테고리',
-  promo:         '판촉물 품목 분류',
-  azure:         'Azure 서비스 구분',
-  azure_restype: 'Azure 리소스 타입',
-  azure_costcat: 'Azure 비용 카테고리',
-  ai_license:    'AI 라이선스 서비스',
+  assets:              '고정자산 분류',
+  sub:                 'IT정기결제 카테고리',
+  promo:               '판촉물 품목 분류',
+  azure:               'Azure 서비스 구분',
+  azure_restype:       'Azure 리소스 타입',
+  azure_cost_dept:     'Azure 비용 - 부서',
+  azure_cost_service:  'Azure 비용 - 서비스(품의서)',
+  ai_license:          'AI 라이선스 서비스',
 };
+
+// 각 메뉴별 "설정" 페이지에서 노출할 카테고리 탭 목록
+const SETTINGS_PAGE_GROUPS = {
+  'assets-settings': ['assets'],
+  'sub-settings':    ['sub'],
+  'promo-settings':  ['promo'],
+  'azure-settings':  ['azure', 'azure_restype', 'azure_cost_dept', 'azure_cost_service'],
+  'ai-settings':     ['ai_license'],
+};
+
+const SETTINGS_PAGE_TITLES = {
+  'assets-settings': '고정자산 관리 설정',
+  'sub-settings':    'IT정기결제 설정',
+  'promo-settings':  '판촉물 관리 설정',
+  'azure-settings':  'Azure 관리 설정',
+  'ai-settings':     'AI 라이선스 설정',
+};
+
+// settings 페이지 진입 시, 관련 있는 카테고리 탭만 보여주고 나머지는 숨긴다
+function openCategorySettings(pageKey) {
+  const groups = SETTINGS_PAGE_GROUPS[pageKey] || Object.keys(CAT_GROUP_LABELS);
+  document.querySelectorAll('.cat-tab').forEach(btn => {
+    const group = btn.id.replace('catTab-', '');
+    btn.classList.toggle('hidden', !groups.includes(group));
+  });
+  const titleEl = document.getElementById('catPageTitle');
+  if (titleEl) titleEl.textContent = SETTINGS_PAGE_TITLES[pageKey] || '메뉴 설정';
+  currentCatGroup = groups[0];
+  switchCatTab(groups[0]);
+}
 
 async function loadCategoryPage() {
   currentCatGroup = 'assets';
