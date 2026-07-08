@@ -726,6 +726,10 @@ function openAzureLicModal(id) {
 }
 
 async function saveAzureLicense() {
+  if (!AuthManager.hasPermission('ai', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
   const editId = document.getElementById('azLicEditId')?.value;
   const payload = {
     license_name:    document.getElementById('azl_license_name')?.value?.trim(),
@@ -779,67 +783,60 @@ async function deleteAzureLicense(id, name) {
 // ============================================================
 async function loadAzureCosts() {
   try {
-    const period = document.getElementById('azCostFilterPeriod')?.value || '';
-    const cat    = document.getElementById('azCostFilterCat')?.value    || '';
+    const from = document.getElementById('azCostFilterFrom')?.value || '';
+    const to   = document.getElementById('azCostFilterTo')?.value   || '';
+    const dept = document.getElementById('azCostFilterDept')?.value || '';
 
     const data = await azApiFetch(`${AZ_COST_TBL}?limit=1000`);
     allAzureCosts = data?.data || [];
 
     filteredAzureCosts = allAzureCosts.filter(c => {
-      const mP = !period || (c.period || '').startsWith(period);
-      const mC = !cat    || c.category === cat;
-      return mP && mC;
+      const mFrom = !from || (c.period || '') >= from;
+      const mTo   = !to   || (c.period || '') <= to;
+      const mDept = !dept || c.department === dept;
+      return mFrom && mTo && mDept;
     });
 
-    filteredAzureCosts.sort((a, b) => (b.period || '').localeCompare(a.period || ''));
+    filteredAzureCosts.sort((a, b) => (a.period || '').localeCompare(b.period || ''));
     renderAzureCostTable();
+    renderAzureCostPivot();
   } catch (e) {
     showToast('비용 데이터 로드 실패: ' + e.message, 'error');
   }
+}
+
+function resetAzureCostFilter() {
+  ['azCostFilterFrom', 'azCostFilterTo', 'azCostFilterDept'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  loadAzureCosts();
 }
 
 function renderAzureCostTable() {
   const tbody = document.getElementById('azCostTableBody');
   if (!tbody) return;
 
-  const sumUsd    = filteredAzureCosts.reduce((s,c) => s + (Number(c.actual_cost_usd)||0), 0);
-  const sumKrw    = filteredAzureCosts.reduce((s,c) => s + (Number(c.actual_cost_krw)||0), 0);
-  const sumBudget = filteredAzureCosts.reduce((s,c) => s + (Number(c.budget_krw)||0), 0);
-
-  setEl('azCostSumUsd',    '$' + sumUsd.toLocaleString(undefined,{maximumFractionDigits:2}));
-  setEl('azCostSumKrw',    '₩' + sumKrw.toLocaleString());
-  setEl('azCostSumBudget', '₩' + sumBudget.toLocaleString());
   setEl('azCostCount', `전체 ${filteredAzureCosts.length}건`);
 
   if (!filteredAzureCosts.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-16 text-gray-400">
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-gray-400">
       <i class="fas fa-file-invoice-dollar text-4xl block mb-3 opacity-20"></i>비용 데이터가 없습니다.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filteredAzureCosts.map(c => {
-    const budgetKrw  = Number(c.budget_krw) || 0;
-    const costKrw    = Number(c.actual_cost_krw) || 0;
-    const overBudget = budgetKrw > 0 && costKrw > budgetKrw;
-    const overAmt    = overBudget ? costKrw - budgetKrw : 0;
-    const periodFmt  = (c.period || '-').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+  // 최신 등록순으로 관리 목록은 보여준다
+  const rows = [...filteredAzureCosts].sort((a, b) => (b.period || '').localeCompare(a.period || ''));
+
+  tbody.innerHTML = rows.map(c => {
+    const periodFmt = (c.period || '-').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
     return `
-      <tr class="hover:bg-blue-50/30 border-b border-gray-50 transition-colors ${overBudget ? 'bg-red-50/40' : ''}">
+      <tr class="hover:bg-blue-50/30 border-b border-gray-50 transition-colors">
         <td class="px-4 py-2.5 text-xs text-gray-600 font-semibold whitespace-nowrap">${periodFmt}</td>
-        <td class="px-4 py-2.5">${getAzServiceGroupBadge(c.service_group)}</td>
+        <td class="px-4 py-2.5 text-sm text-gray-700">${c.department || '-'}</td>
         <td class="px-4 py-2.5 font-medium text-gray-800 text-sm">${c.service_name || '-'}</td>
-        <td class="px-4 py-2.5">${getAzCatBadge(c.category)}</td>
-        <td class="px-4 py-2.5 text-right text-sm text-gray-500">$${Number(c.actual_cost_usd||0).toLocaleString(undefined,{maximumFractionDigits:2})}</td>
-        <td class="px-4 py-2.5 text-right text-sm font-bold text-blue-700">₩${costKrw.toLocaleString()}</td>
-        <td class="px-4 py-2.5 text-right text-xs text-gray-400">${budgetKrw ? '₩'+budgetKrw.toLocaleString() : '-'}</td>
-        <td class="px-4 py-2.5 text-right text-xs">
-          ${overBudget
-            ? `<span class="text-red-600 font-bold">+₩${overAmt.toLocaleString()} <i class="fas fa-exclamation-triangle"></i></span>`
-            : budgetKrw > 0
-              ? `<span class="text-green-600">-₩${(budgetKrw-costKrw).toLocaleString()}</span>`
-              : '<span class="text-gray-300">-</span>'}
-        </td>
-        <td class="px-4 py-2.5 text-xs text-gray-400">${c.subscription || '-'}</td>
+        <td class="px-4 py-2.5 text-right text-sm font-bold text-blue-700">₩${(Number(c.actual_cost_krw)||0).toLocaleString()}</td>
+        <td class="px-4 py-2.5 text-xs text-gray-400">${c.approval_no || '-'}</td>
         <td class="px-4 py-2.5 text-xs text-gray-400 max-w-28 truncate" title="${c.note||''}">${c.note || '-'}</td>
         <td class="px-4 py-2.5 text-center">
           <div class="flex gap-1 justify-center">
@@ -853,20 +850,113 @@ function renderAzureCostTable() {
   }).join('');
 }
 
+// ============================================================
+// 월별 보고 피벗 (부서 > 서비스(품의서)별 그룹, 원본 엑셀 '매월 보고' 시트와 동일 구조)
+// ============================================================
+function renderAzureCostPivot() {
+  const head = document.getElementById('azCostPivotHead');
+  const body = document.getElementById('azCostPivotBody');
+  const foot = document.getElementById('azCostPivotFoot');
+  if (!head || !body || !foot) return;
+
+  if (!filteredAzureCosts.length) {
+    head.innerHTML = '';
+    body.innerHTML = `<tr><td class="text-center py-16 text-gray-400">비용 데이터가 없습니다.</td></tr>`;
+    foot.innerHTML = '';
+    return;
+  }
+
+  // 부서별로 등장한 서비스(품의서)를 순서대로 수집
+  const deptOrder = [];
+  const deptServices = {}; // { 부서: [서비스명, ...] }
+  filteredAzureCosts.forEach(c => {
+    const dept = c.department || '기타';
+    const svc  = c.service_name || '기타';
+    if (!deptServices[dept]) { deptServices[dept] = []; deptOrder.push(dept); }
+    if (!deptServices[dept].includes(svc)) deptServices[dept].push(svc);
+  });
+
+  // 컬럼 목록: [{dept, svc}, ...] 부서 순서 -> 서비스 순서
+  const columns = [];
+  deptOrder.forEach(dept => deptServices[dept].forEach(svc => columns.push({ dept, svc })));
+
+  // 기간(월) 목록
+  const periods = [...new Set(filteredAzureCosts.map(c => c.period).filter(Boolean))].sort();
+
+  // 값 매트릭스: matrix[period][dept|svc] = 합계
+  const matrix = {};
+  periods.forEach(p => { matrix[p] = {}; columns.forEach(col => matrix[p][`${col.dept}|${col.svc}`] = 0); });
+  filteredAzureCosts.forEach(c => {
+    const p = c.period; if (!p || !matrix[p]) return;
+    const key = `${c.department||'기타'}|${c.service_name||'기타'}`;
+    matrix[p][key] = (matrix[p][key] || 0) + (Number(c.actual_cost_krw) || 0);
+  });
+
+  // 헤더 렌더 (1행: 부서, colspan / 2행: 서비스명)
+  let deptRow = '<tr><th class="px-3 py-2 text-left border-b border-gray-100">기간</th>';
+  deptOrder.forEach(dept => {
+    deptRow += `<th class="px-3 py-2 text-center border-b border-gray-100 bg-blue-50/60" colspan="${deptServices[dept].length}">${dept}</th>`;
+  });
+  deptRow += '<th class="px-3 py-2 text-center border-b border-gray-100">월계</th></tr>';
+
+  let svcRow = '<tr><th class="px-3 py-2"></th>';
+  columns.forEach(col => { svcRow += `<th class="px-3 py-2 text-right font-normal whitespace-nowrap">${col.svc}</th>`; });
+  svcRow += '<th class="px-3 py-2"></th></tr>';
+
+  head.innerHTML = deptRow + svcRow;
+
+  // 바디 렌더
+  body.innerHTML = periods.map(p => {
+    const periodFmt = p.replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+    let total = 0;
+    const cells = columns.map(col => {
+      const v = matrix[p][`${col.dept}|${col.svc}`] || 0;
+      total += v;
+      return `<td class="px-3 py-2 text-right">${v ? '₩'+v.toLocaleString() : '<span class="text-gray-300">-</span>'}</td>`;
+    }).join('');
+    return `<tr class="border-b border-gray-50 hover:bg-blue-50/20">
+      <td class="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">${periodFmt}</td>
+      ${cells}
+      <td class="px-3 py-2 text-right font-bold text-blue-700">₩${total.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+
+  // 당월 - 전월 증감 (마지막 두 기간 비교)
+  if (periods.length >= 2) {
+    const last = periods[periods.length - 1];
+    const prev = periods[periods.length - 2];
+    let totalDiff = 0;
+    const diffCells = columns.map(col => {
+      const key = `${col.dept}|${col.svc}`;
+      const diff = (matrix[last][key] || 0) - (matrix[prev][key] || 0);
+      totalDiff += diff;
+      const cls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
+      return `<td class="px-3 py-2 text-right ${cls}">${diff ? (diff>0?'+':'') + '₩'+diff.toLocaleString() : '-'}</td>`;
+    }).join('');
+    foot.innerHTML = `<tr>
+      <td class="px-3 py-2">당월 - 전월</td>
+      ${diffCells}
+      <td class="px-3 py-2 text-right">${totalDiff ? (totalDiff>0?'+':'') + '₩'+totalDiff.toLocaleString() : '-'}</td>
+    </tr>`;
+  } else {
+    foot.innerHTML = '';
+  }
+}
+
 function openAzureCostModal(id) {
   const isEdit = !!id;
   document.getElementById('azureCostModalTitle').innerHTML =
     `<i class="fas fa-file-invoice-dollar text-blue-500"></i>${isEdit ? '비용 수정' : '비용 등록'}`;
   document.getElementById('azCostEditId').value = id || '';
 
-  const fields = ['period','service_group','category','service_name','actual_cost_usd','actual_cost_krw','budget_krw','subscription','note'];
+  const fields = ['period', 'department', 'service_name', 'actual_cost_krw', 'approval_no', 'note'];
 
   if (isEdit) {
     const item = allAzureCosts.find(c => c.id === id);
     if (!item) return;
     fields.forEach(f => {
       const el = document.getElementById(`azc_${f}`);
-      if (el) el.value = item[f] !== undefined ? item[f] : '';
+      if (el) el.value = item[f] !== undefined && item[f] !== null ? item[f] : '';
     });
   } else {
     fields.forEach(f => {
@@ -888,18 +978,16 @@ async function saveAzureCost() {
   const editId = document.getElementById('azCostEditId')?.value;
   const payload = {
     period:          document.getElementById('azc_period')?.value,
-    service_group:   document.getElementById('azc_service_group')?.value,
-    category:        document.getElementById('azc_category')?.value,
-    service_name:    document.getElementById('azc_service_name')?.value?.trim(),
-    actual_cost_usd: Number(document.getElementById('azc_actual_cost_usd')?.value) || 0,
+    department:      document.getElementById('azc_department')?.value,
+    service_name:    document.getElementById('azc_service_name')?.value,
     actual_cost_krw: Number(document.getElementById('azc_actual_cost_krw')?.value) || 0,
-    budget_krw:      Number(document.getElementById('azc_budget_krw')?.value)      || 0,
-    subscription:    document.getElementById('azc_subscription')?.value?.trim(),
+    approval_no:     document.getElementById('azc_approval_no')?.value?.trim(),
     note:            document.getElementById('azc_note')?.value?.trim(),
   };
 
   if (!payload.period)       { showToast('기간을 선택해주세요.', 'warning'); return; }
-  if (!payload.service_name) { showToast('서비스명을 입력해주세요.', 'warning'); return; }
+  if (!payload.department)   { showToast('부서를 선택해주세요.', 'warning'); return; }
+  if (!payload.service_name) { showToast('서비스(품의서)를 선택해주세요.', 'warning'); return; }
 
   try {
     if (editId) {
@@ -928,7 +1016,7 @@ async function deleteAzureCost(id, name) {
 }
 
 // ============================================================
-// 월별 비용대장 – Excel 내보내기
+// 월별 비용대장 – Excel 내보내기 (개별 항목 목록)
 // ============================================================
 function exportAzureCostExcel() {
   if (!filteredAzureCosts.length) {
@@ -936,82 +1024,72 @@ function exportAzureCostExcel() {
     return;
   }
 
-  /* ① 헤더 정의 */
-  const headers = ['기간', '서비스 구분', '서비스명', '카테고리',
-                   '비용(USD)', '비용(KRW)', '예산(KRW)', '초과금액(KRW)', '구독', '비고'];
-
-  /* ② 데이터 행 변환 */
+  const headers = ['기간', '부서', '서비스(품의서)', '금액(원)', '승인번호', '비고'];
   const rows = filteredAzureCosts.map(c => {
-    const period   = (c.period || '').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
-    const costKrw  = Number(c.actual_cost_krw) || 0;
-    const budgKrw  = Number(c.budget_krw)      || 0;
-    const overAmt  = costKrw > budgKrw ? costKrw - budgKrw : 0;
-    return [
-      period,
-      c.service_group  || '-',
-      c.service_name   || '-',
-      c.category       || '-',
-      Number(c.actual_cost_usd) || 0,
-      costKrw,
-      budgKrw,
-      overAmt,
-      c.subscription   || '-',
-      c.note           || '',
-    ];
+    const period = (c.period || '').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+    return [period, c.department || '-', c.service_name || '-', Number(c.actual_cost_krw) || 0, c.approval_no || '-', c.note || ''];
+  });
+  const sumKrw = rows.reduce((s, r) => s + r[3], 0);
+  rows.push(['합계', '', '', sumKrw, '', '']);
+
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 24 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '비용목록');
+    XLSX.writeFile(wb, `Azure비용목록_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else {
+    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
+  }
+}
+
+// ============================================================
+// 월별 보고 피벗 – Excel 내보내기 (부사장 보고용, 원본 엑셀과 동일 레이아웃)
+// ============================================================
+function exportAzureCostPivotExcel() {
+  if (!filteredAzureCosts.length) {
+    showToast('내보낼 데이터가 없습니다.', 'warning');
+    return;
+  }
+
+  const deptOrder = [];
+  const deptServices = {};
+  filteredAzureCosts.forEach(c => {
+    const dept = c.department || '기타';
+    const svc  = c.service_name || '기타';
+    if (!deptServices[dept]) { deptServices[dept] = []; deptOrder.push(dept); }
+    if (!deptServices[dept].includes(svc)) deptServices[dept].push(svc);
+  });
+  const columns = [];
+  deptOrder.forEach(dept => deptServices[dept].forEach(svc => columns.push({ dept, svc })));
+  const periods = [...new Set(filteredAzureCosts.map(c => c.period).filter(Boolean))].sort();
+
+  const matrix = {};
+  periods.forEach(p => { matrix[p] = {}; columns.forEach(col => matrix[p][`${col.dept}|${col.svc}`] = 0); });
+  filteredAzureCosts.forEach(c => {
+    const p = c.period; if (!p || !matrix[p]) return;
+    const key = `${c.department||'기타'}|${c.service_name||'기타'}`;
+    matrix[p][key] = (matrix[p][key] || 0) + (Number(c.actual_cost_krw) || 0);
   });
 
-  /* ③ 합계 행 */
-  const sumUsd  = rows.reduce((s, r) => s + r[4], 0);
-  const sumKrw  = rows.reduce((s, r) => s + r[5], 0);
-  const sumBudg = rows.reduce((s, r) => s + r[6], 0);
-  const sumOver = rows.reduce((s, r) => s + r[7], 0);
-  rows.push(['합계', '', '', '', sumUsd, sumKrw, sumBudg, sumOver, '', '']);
+  const headerRow1 = ['부서'].concat(deptOrder.flatMap(d => Array(deptServices[d].length).fill(d))).concat(['']);
+  const headerRow2 = ['기간'].concat(columns.map(c => c.svc)).concat(['월계']);
+  const dataRows = periods.map(p => {
+    const periodFmt = p.replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+    const vals = columns.map(col => matrix[p][`${col.dept}|${col.svc}`] || 0);
+    const total = vals.reduce((s, v) => s + v, 0);
+    return [periodFmt, ...vals, total];
+  });
 
-  /* ④ CSV 변환 (XLSX.js 미사용 시 CSV 폴백) */
   if (typeof XLSX !== 'undefined') {
-    // XLSX 라이브러리 사용 가능 시 실제 .xlsx 생성
-    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // 열 너비 설정
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 16 }, { wch: 24 }, { wch: 16 },
-      { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
-      { wch: 20 }, { wch: 24 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, '월별 비용대장');
-
-    // 파일명: 비용대장_YYYYMM.xlsx
-    const fromEl = document.getElementById('azCostFilterFrom');
-    const toEl   = document.getElementById('azCostFilterTo');
-    const fromStr = (fromEl?.value || '').replace('-', '') || '';
-    const toStr   = (toEl?.value   || '').replace('-', '') || '';
-    const suffix  = fromStr && toStr ? `_${fromStr}-${toStr}` : fromStr ? `_${fromStr}` : '';
-    XLSX.writeFile(wb, `월별비용대장${suffix}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, '월별 보고');
+    XLSX.writeFile(wb, `Azure월별비용보고_${Date.now()}.xlsx`);
     showToast('Excel 파일이 다운로드되었습니다.', 'success');
-
   } else {
-    // XLSX 없을 때 CSV 폴백
-    const escape = v => {
-      const s = String(v ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n')
-        ? `"${s.replace(/"/g, '""')}"`
-        : s;
-    };
-    const csvRows = [headers, ...rows].map(r => r.map(escape).join(','));
-    const bom     = '\uFEFF';           // UTF-8 BOM (Excel 한글 깨짐 방지)
-    const blob    = new Blob([bom + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const url     = URL.createObjectURL(blob);
-    const a       = document.createElement('a');
-    a.href        = url;
-    a.download    = '월별비용대장.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('CSV 파일이 다운로드되었습니다.', 'success');
+    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
   }
 }
 
@@ -1088,7 +1166,7 @@ async function loadAdminUsers() {
 
 // 기본 permissions 구조 반환
 function defaultPermissions() {
-  return { assets:{view:true,write:false}, sub:{view:true,write:false}, promo:{view:true,write:false}, azure:{view:false,write:false} };
+  return { assets:{view:true,write:false}, sub:{view:true,write:false}, promo:{view:true,write:false}, azure:{view:false,write:false}, ai:{view:false,write:false} };
 }
 
 // permissions 객체를 토글 UI에 반영 (prefix: '' = 수정모달, 'n' = 신규모달)
@@ -1103,6 +1181,8 @@ function applyPermToggles(perms, prefix) {
   set(`${prefix}perm_promo_write`,  p.promo?.write);
   set(`${prefix}perm_azure_view`,   p.azure?.view);
   set(`${prefix}perm_azure_write`,  p.azure?.write);
+  set(`${prefix}perm_ai_view`,      p.ai?.view);
+  set(`${prefix}perm_ai_write`,     p.ai?.write);
 }
 
 // 토글 UI에서 permissions 객체 수집 (prefix: '' = 수정모달, 'n' = 신규모달)
@@ -1113,6 +1193,7 @@ function collectPermFromToggles(prefix) {
     sub:    { view: get(`${prefix}perm_sub_view`),     write: get(`${prefix}perm_sub_write`) },
     promo:  { view: get(`${prefix}perm_promo_view`),   write: get(`${prefix}perm_promo_write`) },
     azure:  { view: get(`${prefix}perm_azure_view`),   write: get(`${prefix}perm_azure_write`) },
+    ai:     { view: get(`${prefix}perm_ai_view`),      write: get(`${prefix}perm_ai_write`) },
   };
 }
 
@@ -1130,7 +1211,7 @@ function openAdminUserModal(userId) {
     // permissions 토글 반영 (admin 이면 전체 ON)
     let perms;
     if (u.role === 'admin') {
-      perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true} };
+      perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true}, ai:{view:true,write:true} };
     } else {
       try { perms = u.permissions ? JSON.parse(u.permissions) : null; } catch { perms = null; }
     }
@@ -1148,7 +1229,7 @@ async function saveAdminUser() {
   // admin 역할이면 전체 권한, 그 외엔 토글에서 수집
   let perms;
   if (role === 'admin') {
-    perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true} };
+    perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true}, ai:{view:true,write:true} };
   } else {
     perms = collectPermFromToggles('');
   }
@@ -1235,7 +1316,7 @@ async function saveNewUser() {
 
   let perms;
   if (role === 'admin') {
-    perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true} };
+    perms = { assets:{view:true,write:true}, sub:{view:true,write:true}, promo:{view:true,write:true}, azure:{view:true,write:true}, ai:{view:true,write:true} };
   } else {
     perms = collectPermFromToggles('n');
   }

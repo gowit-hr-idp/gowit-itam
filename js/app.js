@@ -28,14 +28,16 @@ const PAGE_PERMISSION_GROUP = {
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
+  'ai-licenses': 'ai',
 };
 
 // 사이드바에서 열람 권한이 없는 메뉴 그룹을 숨긴다
 function applyMenuPermissions() {
-  ['assets', 'sub', 'promo', 'azure'].forEach(group => {
+  ['assets', 'sub', 'promo', 'azure', 'ai_license'].forEach(group => {
     const navGroup = document.querySelector(`.nav-group[data-group="${group}"]`);
     if (!navGroup) return;
-    if (!AuthManager.hasPermission(group, 'view')) {
+    const permKey = group === 'ai_license' ? 'ai' : group;
+    if (!AuthManager.hasPermission(permKey, 'view')) {
       navGroup.classList.add('hidden');
     } else {
       navGroup.classList.remove('hidden');
@@ -261,7 +263,7 @@ async function navigateTo(page) {
     case 'promo-history':  loadPromoHistory(); break;
     case 'azure-dashboard': await renderAzureDashboard(); break;
     case 'azure-resources': await renderAzureResources(); break;
-    case 'azure-costs':     await loadAzureCosts(); break;
+    case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); break;
     case 'ai-licenses':     await renderAzureLicenses(); break;
     case 'admin-users':
       if (!AuthManager.isAdmin()) { showToast('관리자 권한이 필요합니다.', 'error'); navigateTo('dashboard'); return; }
@@ -1288,14 +1290,15 @@ function exportExcel() {
 // 기존 하드코딩 옵션을 그대로 유지한다(안전한 기본값).
 // ============================================================
 const CATEGORY_DROPDOWN_MAP = [
-  { selectId: 'f_asset_category',   group: 'assets'        },
-  { selectId: 'sf_category',        group: 'sub'           },
-  { selectId: 'pf_category',        group: 'promo'         },
-  { selectId: 'azr_service_group',  group: 'azure'         },
-  { selectId: 'azr_resource_type',  group: 'azure_restype' },
-  { selectId: 'azc_service_group',  group: 'azure'         },
-  { selectId: 'azc_category',       group: 'azure_costcat' },
-  { selectId: 'azl_license_type',   group: 'ai_license'    },
+  { selectId: 'f_asset_category',   group: 'assets'           },
+  { selectId: 'sf_category',        group: 'sub'              },
+  { selectId: 'pf_category',        group: 'promo'            },
+  { selectId: 'azr_service_group',  group: 'azure'            },
+  { selectId: 'azr_resource_type',  group: 'azure_restype'    },
+  { selectId: 'azc_department',     group: 'azure_cost_dept'  },
+  { selectId: 'azc_service_name',   group: 'azure_cost_service' },
+  { selectId: 'azCostFilterDept',   group: 'azure_cost_dept'  },
+  { selectId: 'azl_license_type',   group: 'ai_license'       },
 ];
 
 async function loadAllCategoryRows() {
