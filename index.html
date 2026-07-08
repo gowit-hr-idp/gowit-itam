@@ -1001,10 +1001,15 @@
         </select>
       </div>
       <div><label class="form-label">플랜/SKU</label><input type="text" id="azl_plan" placeholder="예: Business Premium" class="form-input"/></div>
-      <div><label class="form-label">총 시트 수 *</label><input type="number" id="azl_total_seats" placeholder="0" class="form-input" min="0" required/></div>
+      <div><label class="form-label">총 시트 수</label><input type="number" id="azl_total_seats" placeholder="시트제 아니면 비워두세요" class="form-input" min="0"/></div>
       <div><label class="form-label">사용 시트 수</label><input type="number" id="azl_used_seats" placeholder="0" class="form-input" min="0"/></div>
-      <div><label class="form-label">단가(USD/월/시트)</label><input type="number" id="azl_unit_price_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
-      <div><label class="form-label">단가(KRW/월/시트)</label><input type="number" id="azl_unit_price_krw" placeholder="0" class="form-input" min="0"/></div>
+      <div><label class="form-label">단가(USD/월/시트)</label><input type="number" id="azl_unit_price_usd" oninput="suggestKrwFromUsd()" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div><label class="form-label">단가(KRW/월/시트)</label><input type="number" id="azl_unit_price_krw" placeholder="0" class="form-input" min="0"/>
+        <p class="text-xs text-gray-400 mt-1">※ 실제 계산·차트는 이 KRW 값을 기준으로 합니다. USD만 아시면 위 칸에 입력 시 참고용으로 자동 환산됩니다.</p>
+      </div>
+      <div class="md:col-span-2"><label class="form-label">추가 사용료(원/월)</label><input type="number" id="azl_additional_cost_krw" placeholder="0" class="form-input" min="0"/>
+        <p class="text-xs text-gray-400 mt-1">시트 수와 무관한 비용(API 사용량 초과 요금, 사용량 기반 과금 등)이 있으면 여기에 입력하세요. 시트 없이 이 항목만으로 등록도 가능합니다.</p>
+      </div>
       <div><label class="form-label">결제 주기</label><select id="azl_billing_cycle" class="form-input"><option value="월간">월간</option><option value="연간">연간</option></select></div>
       <div><label class="form-label">상태</label><select id="azl_status" class="form-input"><option value="활성">활성</option><option value="만료">만료</option><option value="중단">중단</option><option value="검토중">검토중</option></select></div>
       <div><label class="form-label">계약 시작일</label><input type="date" id="azl_contract_start" class="form-input"/></div>
