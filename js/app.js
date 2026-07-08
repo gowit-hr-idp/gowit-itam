@@ -51,6 +51,34 @@ function applyMenuPermissions() {
   if (subBtn) subBtn.classList.toggle('hidden', !AuthManager.hasPermission('sub', 'write'));
 }
 
+// 관리자가 방금 바꾼 권한을, 이미 로그인해 있는 사용자의 화면에도 반영되도록
+// 주기적으로 최신 role/permissions를 서버에서 다시 받아온다.
+async function refreshSessionPermissions() {
+  const session = AuthManager.getCurrentUser();
+  if (!session || !session.id) return;
+  try {
+    const rows = await callUsersRpc('admin_get_user', { p_id: session.id });
+    const u = Array.isArray(rows) ? rows[0] : null;
+    if (!u || u.active === false) {
+      // 계정이 비활성화/삭제된 경우 강제 로그아웃
+      AuthManager.logout();
+      return;
+    }
+    const updated = {
+      ...session,
+      role:        u.role,
+      department:  u.department || '',
+      is_admin:    u.is_admin === true,
+      permissions: u.permissions || null,
+    };
+    sessionStorage.setItem('ams_session', JSON.stringify(updated));
+    applyMenuPermissions();
+    if (typeof initAzureAdminMenu === 'function') initAzureAdminMenu();
+  } catch (e) {
+    console.warn('권한 새로고침 실패:', e);
+  }
+}
+
 // ============================================================
 // 초기화
 // ============================================================
@@ -81,6 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSidebarToggle();
   initSearch();
   initAzureAdminMenu();   // admin 메뉴 표시/숨기기
+  await refreshSessionPermissions();     // 로그인 이후 관리자가 바꾼 권한 즉시 반영
+  setInterval(refreshSessionPermissions, 60000); // 이후 1분마다 자동 최신화
   navigateTo('dashboard');
 });
 
