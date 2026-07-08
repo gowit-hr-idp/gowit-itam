@@ -228,7 +228,7 @@ async function renderAiLicMainDashTab() {
 
     const totalSeats = licenses.reduce((s,l) => s + (Number(l.total_seats)||0), 0);
     const usedSeats  = licenses.reduce((s,l) => s + (Number(l.used_seats)||0), 0);
-    const monthlyCost = licenses.reduce((s,l) => s + (Number(l.unit_price_krw)||0) * (Number(l.total_seats)||0), 0);
+    const monthlyCost = licenses.reduce((s,l) => s + licenseMonthlyCostKrw(l), 0);
     const expiring = licenses
       .filter(l => l.contract_end)
       .map(l => ({ ...l, days: Math.ceil((new Date(l.contract_end) - new Date()) / 86400000) }))
@@ -246,7 +246,7 @@ async function renderAiLicMainDashTab() {
       const map = {};
       licenses.forEach(l => {
         const key = l.license_type || '기타';
-        map[key] = (map[key]||0) + (Number(l.unit_price_krw)||0) * (Number(l.total_seats)||0);
+        map[key] = (map[key]||0) + licenseMonthlyCostKrw(l);
       });
       const entries = Object.entries(map).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
       if (entries.length) {
@@ -532,15 +532,34 @@ async function renderAzureLicenses() {
   }
 }
 
+// USD 단가 입력 시, 계산에 실제로 쓰이는 KRW 단가를 자동으로 채워준다
+// (KRW를 비워두면 대시보드/차트 집계에서 0으로 처리되기 때문)
+const AZL_APPROX_USD_KRW_RATE = 1400;
+function suggestKrwFromUsd() {
+  const usdEl = document.getElementById('azl_unit_price_usd');
+  const krwEl = document.getElementById('azl_unit_price_krw');
+  if (!usdEl || !krwEl) return;
+  const usd = Number(usdEl.value) || 0;
+  // 이미 KRW 값을 직접 입력해둔 경우엔 덮어쓰지 않는다
+  if (usd > 0 && !krwEl.value) {
+    krwEl.value = Math.round(usd * AZL_APPROX_USD_KRW_RATE);
+  }
+}
+
+// 라이선스 1건의 월 비용 계산 (시트기반 + 시트무관 추가사용료를 합산 → 어떤 과금방식이든 대응)
+function licenseMonthlyCostKrw(l) {
+  const seatCost = (Number(l.unit_price_krw) || 0) * (Number(l.total_seats) || 0);
+  const extraCost = Number(l.additional_cost_krw) || 0;
+  return seatCost + extraCost;
+}
+
 function renderAzureLicSummary() {
   const summary = document.getElementById('azLicSummary');
   if (!summary) return;
 
   const totalSeats = allAzureLicenses.reduce((s, l) => s + (Number(l.total_seats)||0), 0);
   const usedSeats  = allAzureLicenses.reduce((s, l) => s + (Number(l.used_seats)||0), 0);
-  const totalMonthlyCost = allAzureLicenses.reduce((s, l) => {
-    return s + (Number(l.unit_price_krw)||0) * (Number(l.total_seats)||0);
-  }, 0);
+  const totalMonthlyCost = allAzureLicenses.reduce((s, l) => s + licenseMonthlyCostKrw(l), 0);
   const expiringSoon = allAzureLicenses.filter(l => {
     if (!l.contract_end) return false;
     const days = Math.ceil((new Date(l.contract_end) - new Date()) / 86400000);
@@ -577,7 +596,7 @@ function renderAzLicTypeChart() {
   const map = {};
   allAzureLicenses.forEach(l => {
     const key = l.license_type || '기타';
-    const cost = (Number(l.unit_price_krw) || 0) * (Number(l.total_seats) || 0);
+    const cost = licenseMonthlyCostKrw(l);
     map[key] = (map[key] || 0) + cost;
   });
   const entries = Object.entries(map).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
@@ -645,7 +664,7 @@ function renderAzureLicTable() {
     const remaining = total - used;
     const usePct    = total > 0 ? Math.round((used / total) * 100) : 0;
     const unitKrw   = Number(l.unit_price_krw) || 0;
-    const monthlyKrw = unitKrw * total;
+    const monthlyKrw = licenseMonthlyCostKrw(l);
 
     // 만료일 계산
     let expireInfo = '-';
@@ -698,7 +717,7 @@ function openAzureLicModal(id) {
   document.getElementById('azLicEditId').value = id || '';
 
   const fields = ['license_name','license_type','plan','total_seats','used_seats',
-    'unit_price_usd','unit_price_krw','billing_cycle','status',
+    'unit_price_usd','unit_price_krw','additional_cost_krw','billing_cycle','status',
     'contract_start','contract_end','auto_renew','owner','department','note'];
 
   if (isEdit) {
@@ -732,25 +751,30 @@ async function saveAzureLicense() {
   }
   const editId = document.getElementById('azLicEditId')?.value;
   const payload = {
-    license_name:    document.getElementById('azl_license_name')?.value?.trim(),
-    license_type:    document.getElementById('azl_license_type')?.value,
-    plan:            document.getElementById('azl_plan')?.value?.trim(),
-    total_seats:     Number(document.getElementById('azl_total_seats')?.value)     || 0,
-    used_seats:      Number(document.getElementById('azl_used_seats')?.value)      || 0,
-    unit_price_usd:  Number(document.getElementById('azl_unit_price_usd')?.value)  || 0,
-    unit_price_krw:  Number(document.getElementById('azl_unit_price_krw')?.value)  || 0,
-    billing_cycle:   document.getElementById('azl_billing_cycle')?.value || '월간',
-    status:          document.getElementById('azl_status')?.value       || '활성',
-    contract_start:  document.getElementById('azl_contract_start')?.value,
-    contract_end:    document.getElementById('azl_contract_end')?.value,
-    auto_renew:      document.getElementById('azl_auto_renew')?.value === 'true',
-    owner:           document.getElementById('azl_owner')?.value?.trim(),
-    department:      document.getElementById('azl_department')?.value?.trim(),
-    note:            document.getElementById('azl_note')?.value?.trim(),
+    license_name:        document.getElementById('azl_license_name')?.value?.trim(),
+    license_type:        document.getElementById('azl_license_type')?.value,
+    plan:                document.getElementById('azl_plan')?.value?.trim(),
+    total_seats:         Number(document.getElementById('azl_total_seats')?.value)         || 0,
+    used_seats:          Number(document.getElementById('azl_used_seats')?.value)          || 0,
+    unit_price_usd:      Number(document.getElementById('azl_unit_price_usd')?.value)      || 0,
+    unit_price_krw:      Number(document.getElementById('azl_unit_price_krw')?.value)      || 0,
+    additional_cost_krw: Number(document.getElementById('azl_additional_cost_krw')?.value) || 0,
+    billing_cycle:       document.getElementById('azl_billing_cycle')?.value || '월간',
+    status:              document.getElementById('azl_status')?.value       || '활성',
+    contract_start:      document.getElementById('azl_contract_start')?.value,
+    contract_end:        document.getElementById('azl_contract_end')?.value,
+    auto_renew:          document.getElementById('azl_auto_renew')?.value === 'true',
+    owner:               document.getElementById('azl_owner')?.value?.trim(),
+    department:          document.getElementById('azl_department')?.value?.trim(),
+    note:                document.getElementById('azl_note')?.value?.trim(),
   };
 
   if (!payload.license_name) { showToast('제품명을 입력해주세요.', 'warning'); return; }
-  if (!payload.total_seats)  { showToast('총 시트 수를 입력해주세요.', 'warning'); return; }
+  // 총 시트 수는 더 이상 필수가 아님 (사용량 기반/정액제 서비스는 시트 개념이 없을 수 있음)
+  if (!payload.total_seats && !payload.unit_price_krw && !payload.additional_cost_krw) {
+    showToast('시트 단가 또는 추가 사용료 중 최소 하나는 입력해주세요.', 'warning');
+    return;
+  }
 
   try {
     if (editId) {
