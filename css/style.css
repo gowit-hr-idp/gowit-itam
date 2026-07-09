@@ -155,6 +155,7 @@ body {
 .badge-폐기    { background: #fee2e2; color: #b91c1c; }
 .badge-매각    { background: #f3e8ff; color: #7e22ce; }
 .badge-분실    { background: #fce7f3; color: #9d174d; }
+.badge-보관    { background: #e2e8f0; color: #475569; }
 
 /* ====== 모달 ====== */
 .modal-overlay {
