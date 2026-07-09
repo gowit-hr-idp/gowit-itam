@@ -24,7 +24,7 @@ let categoryChartInstance = null;
 // ============================================================
 const PAGE_PERMISSION_GROUP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
-  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets',
+  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', lifecycle: 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
@@ -141,7 +141,7 @@ async function loadAllAssets() {
 // 각 페이지가 속한 그룹 매핑
 const PAGE_GROUP_MAP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
-  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', 'assets-settings': 'assets',
+  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', lifecycle: 'assets', 'assets-settings': 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
@@ -248,6 +248,7 @@ async function navigateTo(page) {
     dispose:     ['폐기/매각 처리', '홈 / 고정자산 / 폐기/매각'],
     history:     ['변경 이력', '홈 / 고정자산 / 변경 이력'],
     warranty:    ['보증 만료 관리', '홈 / 고정자산 / 보증 만료'],
+    lifecycle:   ['교체주기 관리', '홈 / 고정자산 / 교체주기 관리'],
     'sub-list':    ['IT 정기결제 목록', '홈 / IT 정기결제 / 구독 목록'],
     'sub-register':['IT 정기결제 등록', '홈 / IT 정기결제 / 구독 등록'],
     'sub-renewal': ['갱신 알림', '홈 / IT 정기결제 / 갱신 알림'],
@@ -285,6 +286,7 @@ async function navigateTo(page) {
     case 'dispose':      await loadAllAssets(); renderDisposePage(); break;
     case 'history':      loadHistory(); break;
     case 'warranty':     await loadAllAssets(); renderWarrantyPage(); break;
+    case 'lifecycle':    await loadAllAssets(); renderLifecyclePage(); break;
     case 'sub-list':     await renderSubList(); break;
     case 'sub-register': openModal('subRegisterModal'); navigateTo('sub-list'); break;
     case 'sub-renewal':  await renderRenewalPage(); break;
@@ -413,6 +415,7 @@ function renderStatusChart(assets) {
   const colorMap = {
     '입고':  '#60a5fa',
     '사용중': '#34d399',
+    '보관':  '#94a3b8',
     '반출':  '#fb923c',
     '반납':  '#818cf8',
     '수리중': '#fbbf24',
@@ -674,7 +677,7 @@ function getCategoryIcon(cat) {
 
 function getActionButtons(a) {
   const btns = [];
-  if (a.status === '사용중' || a.status === '입고') {
+  if (['사용중', '입고', '보관'].includes(a.status)) {
     btns.push(`<button class="action-btn btn-checkout" onclick="openActionModal('${a.id}','반출','반출 처리')"><i class="fas fa-sign-out-alt"></i></button>`);
     btns.push(`<button class="action-btn btn-repair" onclick="openActionModal('${a.id}','수리의뢰','수리 의뢰')"><i class="fas fa-tools"></i></button>`);
     btns.push(`<button class="action-btn btn-dispose" onclick="openActionModal('${a.id}','폐기','폐기 처리')"><i class="fas fa-trash-alt"></i></button>`);
@@ -1281,9 +1284,56 @@ function renderWarrantyPage() {
   }).join('');
 }
 
-// ============================================================
-// Excel 내보내기
-// ============================================================
+// 구매일 기준 5년 이상 경과한 PC/노트북 목록 (교체·폐기 검토 대상)
+function renderLifecyclePage() {
+  const today = new Date();
+  const FIVE_YEARS_MS = 5 * 365.25 * 86400000;
+
+  const overdue = allAssets
+    .filter(a => a.purchase_date
+      && a.asset_category === 'PC/노트북'
+      && !['폐기', '매각'].includes(a.status))
+    .map(a => {
+      const purchased = new Date(a.purchase_date);
+      const elapsedYears = (today - purchased) / (365.25 * 86400000);
+      return { ...a, elapsedYears };
+    })
+    .filter(a => a.elapsedYears >= 5)
+    .sort((a, b) => b.elapsedYears - a.elapsedYears); // 오래된 것부터
+
+  const y5 = overdue.filter(a => a.elapsedYears >= 5 && a.elapsedYears < 6).length;
+  const y6 = overdue.filter(a => a.elapsedYears >= 6).length;
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('lifecycle-5y-count', y5);
+  set('lifecycle-6y-count', y6);
+  set('lifecycle-total-count', overdue.length);
+
+  const tbody = document.getElementById('lifecycleTableBody');
+  if (!tbody) return;
+  if (!overdue.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-gray-400">5년 이상 경과한 PC/노트북이 없습니다.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = overdue.map(a => {
+    const years = a.elapsedYears.toFixed(1);
+    const rowCls = a.elapsedYears >= 6 ? 'bg-red-50/60' : 'bg-yellow-50/60';
+    const yearTxt = a.elapsedYears >= 6
+      ? `<span class="text-red-600 font-bold">${years}년 경과</span>`
+      : `<span class="text-yellow-700 font-semibold">${years}년 경과</span>`;
+    return `
+      <tr class="${rowCls}">
+        <td class="px-4 py-2.5 font-mono text-xs text-blue-700">${a.asset_no}</td>
+        <td class="px-4 py-2.5 font-medium text-sm">${a.asset_name}</td>
+        <td class="px-4 py-2.5 text-xs text-gray-500">${a.cpu||''} ${a.mem||''} ${a.ssd||''}</td>
+        <td class="px-4 py-2.5 text-xs">${a.user_name||'-'} / ${a.department||'-'}</td>
+        <td class="px-4 py-2.5 text-sm">${a.purchase_date}</td>
+        <td class="px-4 py-2.5">${yearTxt}</td>
+        <td class="px-4 py-2.5"><span class="badge badge-${a.status}">${a.status}</span></td>
+      </tr>`;
+  }).join('');
+}
 function exportExcel() {
   try {
     const data = filteredAssets.map(a => ({
