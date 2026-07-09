@@ -256,6 +256,7 @@ function resetSubFilter() {
 }
 
 function renderSubTable() {
+  registerSortableTable('sub', () => filteredSubs, (a) => { filteredSubs = a; }, renderSubTable);
   const tbody = document.getElementById('subTableBody');
   const total = filteredSubs.length;
   document.getElementById('subCount').textContent = `전체 ${total}건`;

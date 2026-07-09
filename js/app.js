@@ -20,6 +20,53 @@ let statusChartInstance   = null;
 let categoryChartInstance = null;
 
 // ============================================================
+// 범용 테이블 정렬 (헤더 클릭 정렬) - 여러 메뉴의 목록 테이블에서 공통 사용
+// ============================================================
+const _tableSortRegistry = {};
+const _tableSortState = {};
+
+function registerSortableTable(key, getArray, setArray, renderFn) {
+  _tableSortRegistry[key] = { getArray, setArray, renderFn };
+}
+
+function sortTableHeader(key, field, type) {
+  const reg = _tableSortRegistry[key];
+  if (!reg) return;
+  const state = _tableSortState[key] || {};
+  const dir = (state.field === field && state.dir === 'asc') ? 'desc' : 'asc';
+  _tableSortState[key] = { field, dir };
+
+  const arr = reg.getArray();
+  const sorted = [...arr].sort((a, b) => {
+    let va = a ? a[field] : null;
+    let vb = b ? b[field] : null;
+    if (type === 'number') {
+      va = Number(va) || 0; vb = Number(vb) || 0;
+    } else {
+      va = (va ?? '').toString().toLowerCase();
+      vb = (vb ?? '').toString().toLowerCase();
+    }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  reg.setArray(sorted);
+  reg.renderFn();
+  updateSortIcons(key, field, dir);
+}
+
+function updateSortIcons(key, activeField, dir) {
+  document.querySelectorAll(`th[data-sort-table="${key}"]`).forEach(th => {
+    const icon = th.querySelector('.sort-icon');
+    if (!icon) return;
+    const f = th.getAttribute('data-sort-field');
+    icon.className = (f === activeField)
+      ? `sort-icon fas fa-sort-${dir === 'asc' ? 'up' : 'down'} text-blue-500 ml-1`
+      : 'sort-icon fas fa-sort text-gray-300 ml-1';
+  });
+}
+
+// ============================================================
 // 메뉴별 접근 권한 (관리자 콘솔 > 계정 관리에서 설정한 값 반영)
 // ============================================================
 const PAGE_PERMISSION_GROUP = {
@@ -592,6 +639,7 @@ function resetFilter() {
 }
 
 function renderAssetTable() {
+  registerSortableTable('assets', () => filteredAssets, (a) => { filteredAssets = a; }, renderAssetTable);
   const tbody = document.getElementById('assetTableBody');
   const total = filteredAssets.length;
   document.getElementById('assetCount').textContent = `전체 ${total}건`;
@@ -1240,9 +1288,11 @@ async function loadHistory() {
 // ============================================================
 // 보증 만료 관리
 // ============================================================
+let warrantyList = [];
+
 function renderWarrantyPage() {
   const today = new Date();
-  const assetsWithWarranty = allAssets
+  warrantyList = allAssets
     .filter(a => a.warranty_end && !['폐기','매각'].includes(a.status))
     .map(a => {
       const exp = new Date(a.warranty_end);
@@ -1250,6 +1300,13 @@ function renderWarrantyPage() {
       return { ...a, diffDays };
     })
     .sort((a, b) => a.diffDays - b.diffDays);
+
+  registerSortableTable('warranty', () => warrantyList, (a) => { warrantyList = a; }, renderWarrantyTable);
+  renderWarrantyTable();
+}
+
+function renderWarrantyTable() {
+  const assetsWithWarranty = warrantyList;
 
   const expired = assetsWithWarranty.filter(a => a.diffDays <= 0).length;
   const d30     = assetsWithWarranty.filter(a => a.diffDays > 0 && a.diffDays <= 30).length;
@@ -1285,11 +1342,12 @@ function renderWarrantyPage() {
 }
 
 // 구매일 기준 5년 이상 경과한 PC/노트북 목록 (교체·폐기 검토 대상)
+let lifecycleList = [];
+
 function renderLifecyclePage() {
   const today = new Date();
-  const FIVE_YEARS_MS = 5 * 365.25 * 86400000;
 
-  const overdue = allAssets
+  lifecycleList = allAssets
     .filter(a => a.purchase_date
       && a.asset_category === 'PC/노트북'
       && !['폐기', '매각'].includes(a.status))
@@ -1301,6 +1359,12 @@ function renderLifecyclePage() {
     .filter(a => a.elapsedYears >= 5)
     .sort((a, b) => b.elapsedYears - a.elapsedYears); // 오래된 것부터
 
+  registerSortableTable('lifecycle', () => lifecycleList, (a) => { lifecycleList = a; }, renderLifecycleTable);
+  renderLifecycleTable();
+}
+
+function renderLifecycleTable() {
+  const overdue = lifecycleList;
   const y5 = overdue.filter(a => a.elapsedYears >= 5 && a.elapsedYears < 6).length;
   const y6 = overdue.filter(a => a.elapsedYears >= 6).length;
 

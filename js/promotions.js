@@ -66,6 +66,7 @@ function resetPromoFilter() {
 }
 
 function renderPromoStockTable() {
+  registerSortableTable('promo', () => filteredPromoItems, (a) => { filteredPromoItems = a; }, renderPromoStockTable);
   const tbody = document.getElementById('promoStockTableBody');
   if (!tbody) return;
 

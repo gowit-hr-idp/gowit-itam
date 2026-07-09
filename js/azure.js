@@ -387,6 +387,7 @@ function resetAzureResFilter() {
 }
 
 function renderAzureResTable() {
+  registerSortableTable('azres', () => filteredAzureRes, (a) => { filteredAzureRes = a; }, renderAzureResTable);
   const tbody = document.getElementById('azResTableBody');
   const count = document.getElementById('azResCount');
   if (count) count.textContent = `전체 ${filteredAzureRes.length}건`;
@@ -703,6 +704,7 @@ function renderAzLicExpiringList() {
 }
 
 function renderAzureLicTable() {
+  registerSortableTable('azlic', () => allAzureLicenses, (a) => { allAzureLicenses = a; }, renderAzureLicTable);
   const tbody = document.getElementById('azLicTableBody');
   const count = document.getElementById('azLicCount');
   if (count) count.textContent = `전체 ${allAzureLicenses.length}건`;
@@ -894,6 +896,7 @@ function resetAzureCostFilter() {
 }
 
 function renderAzureCostTable() {
+  registerSortableTable('azcost', () => filteredAzureCosts, (a) => { filteredAzureCosts = a; }, renderAzureCostTable);
   const tbody = document.getElementById('azCostTableBody');
   if (!tbody) return;
 
@@ -905,8 +908,8 @@ function renderAzureCostTable() {
     return;
   }
 
-  // 최신 등록순으로 관리 목록은 보여준다
-  const rows = [...filteredAzureCosts].sort((a, b) => (b.period || '').localeCompare(a.period || ''));
+  const sortState = _tableSortState['azcost'];
+  const rows = sortState ? filteredAzureCosts : [...filteredAzureCosts].sort((a, b) => (b.period || '').localeCompare(a.period || ''));
 
   tbody.innerHTML = rows.map(c => {
     const periodFmt = (c.period || '-').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
