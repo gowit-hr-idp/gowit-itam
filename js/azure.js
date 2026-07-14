@@ -78,7 +78,7 @@ async function renderAzureDashboard() {
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
     renderAzCostServiceMomTable();
-    renderAzResourceTypeChart();
+    renderAzResourceGroupSummary();
 
     // ── 최근 비용 내역 ──
     const tbody = document.getElementById('azureRecentCostBody');
@@ -182,29 +182,53 @@ function renderAzCostServiceMomTable() {
   }).join('');
 }
 
-function renderAzResourceTypeChart() {
-  const ctx = document.getElementById('azureResourceTypeChart');
-  if (!ctx) return;
-  if (azResourceTypeChart) { azResourceTypeChart.destroy(); azResourceTypeChart = null; }
+// 리소스 대장의 "서비스 구분" > "리소스 그룹" 계층 구조로 예상 비용을 집계
+// (GM 업무단위: AI framework / GoWorks 같은 관계 -> GoWorks 안에 구독관리/sendgrid 리소스그룹 이 있는 식의 연속성 확인용)
+function renderAzResourceGroupSummary() {
+  const box = document.getElementById('azResGroupSummary');
+  if (!box) return;
 
-  const map = {};
-  allAzureResources.forEach(r => { const k = r.resource_type || '기타'; map[k] = (map[k]||0)+1; });
-  const entries = Object.entries(map).sort((a,b) => b[1]-a[1]);
-  if (!entries.length) return;
+  if (!allAzureResources.length) {
+    box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">등록된 리소스가 없습니다.</div>`;
+    return;
+  }
 
-  const colors = ['#3b82f6','#6366f1','#8b5cf6','#a855f7','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#84cc16'];
-  azResourceTypeChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: entries.map(e => e[0]),
-      datasets: [{ data: entries.map(e => e[1]), backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } } },
-      cutout: '60%',
-    },
+  // 서비스구분 > 리소스그룹 계층으로 묶기
+  const groups = {}; // { service_group: { total, count, resGroups: { resource_group: { total, count } } } }
+  allAzureResources.forEach(r => {
+    const sg = r.service_group || '기타';
+    const rg = r.resource_group || '(미지정)';
+    const cost = Number(r.monthly_cost_krw) || 0;
+    if (!groups[sg]) groups[sg] = { total: 0, count: 0, resGroups: {} };
+    groups[sg].total += cost;
+    groups[sg].count += 1;
+    if (!groups[sg].resGroups[rg]) groups[sg].resGroups[rg] = { total: 0, count: 0 };
+    groups[sg].resGroups[rg].total += cost;
+    groups[sg].resGroups[rg].count += 1;
   });
+
+  const sgOrder = Object.keys(groups).sort((a, b) => groups[b].total - groups[a].total);
+
+  box.innerHTML = sgOrder.map(sg => {
+    const g = groups[sg];
+    const rgOrder = Object.keys(g.resGroups).sort((a, b) => g.resGroups[b].total - g.resGroups[a].total);
+    const rgRows = rgOrder.map(rg => {
+      const rgData = g.resGroups[rg];
+      return `
+        <div class="flex items-center justify-between py-1 pl-6 text-xs border-b border-gray-50 last:border-0">
+          <span class="text-gray-500"><i class="fas fa-level-up-alt fa-rotate-90 text-gray-300 mr-1.5"></i>${rg} <span class="text-gray-300">(${rgData.count}개)</span></span>
+          <span class="font-medium text-gray-600">₩${rgData.total.toLocaleString()}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div class="mb-2">
+        <div class="flex items-center justify-between py-1.5 bg-indigo-50/60 rounded-lg px-2">
+          <span class="text-sm font-bold text-indigo-700">${sg} <span class="text-xs font-normal text-indigo-400">(리소스 ${g.count}개)</span></span>
+          <span class="text-sm font-bold text-indigo-700">₩${g.total.toLocaleString()}</span>
+        </div>
+        ${rgRows}
+      </div>`;
+  }).join('');
 }
 
 function setEl(id, val) {

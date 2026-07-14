@@ -71,7 +71,7 @@ function updateSortIcons(key, activeField, dir) {
 // ============================================================
 const PAGE_PERMISSION_GROUP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
-  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', lifecycle: 'assets',
+  repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
@@ -188,7 +188,7 @@ async function loadAllAssets() {
 // 각 페이지가 속한 그룹 매핑
 const PAGE_GROUP_MAP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
-  repair: 'assets', dispose: 'assets', history: 'assets', warranty: 'assets', lifecycle: 'assets', 'assets-settings': 'assets',
+  repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets', 'assets-settings': 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
@@ -294,7 +294,6 @@ async function navigateTo(page) {
     repair:      ['수리 관리', '홈 / 고정자산 / 수리 관리'],
     dispose:     ['폐기/매각 처리', '홈 / 고정자산 / 폐기/매각'],
     history:     ['변경 이력', '홈 / 고정자산 / 변경 이력'],
-    warranty:    ['보증 만료 관리', '홈 / 고정자산 / 보증 만료'],
     lifecycle:   ['교체주기 관리', '홈 / 고정자산 / 교체주기 관리'],
     'sub-list':    ['IT 정기결제 목록', '홈 / IT 정기결제 / 구독 목록'],
     'sub-register':['IT 정기결제 등록', '홈 / IT 정기결제 / 구독 등록'],
@@ -332,7 +331,6 @@ async function navigateTo(page) {
     case 'repair':       await loadAllAssets(); renderRepairPage(); break;
     case 'dispose':      await loadAllAssets(); renderDisposePage(); break;
     case 'history':      loadHistory(); break;
-    case 'warranty':     await loadAllAssets(); renderWarrantyPage(); break;
     case 'lifecycle':    await loadAllAssets(); renderLifecyclePage(); break;
     case 'sub-list':     await renderSubList(); break;
     case 'sub-register': openModal('subRegisterModal'); navigateTo('sub-list'); break;
@@ -835,7 +833,7 @@ async function showAssetDetail(id) {
       <h4><i class="fas fa-user mr-1"></i>사용자 & 위치 정보</h4>
       <div class="grid grid-cols-2 gap-x-4">
         <div class="detail-row"><span class="detail-label">사용자</span><span class="detail-value">${asset.user_name || '-'}</span></div>
-        <div class="detail-row"><span class="detail-label">사번</span><span class="detail-value">${asset.user_id || '-'}</span></div>
+        <div class="detail-row"><span class="detail-label">사용 시작일</span><span class="detail-value">${asset.usage_start_date || '-'}</span></div>
         <div class="detail-row"><span class="detail-label">사용 부서</span><span class="detail-value">${asset.department || '-'}</span></div>
         <div class="detail-row"><span class="detail-label">위치</span><span class="detail-value">${asset.location || '-'}</span></div>
         <div class="detail-row md:col-span-2"><span class="detail-label">비고</span><span class="detail-value">${asset.note || '-'}</span></div>
@@ -863,14 +861,24 @@ function openEditModal(id) {
 
   const fields = ['asset_no','asset_category','asset_name','manufacturer','model_name',
                   'serial_no','cpu','mem','ssd','spec','purchase_date','purchase_price','vendor',
-                  'warranty_end','user_name','user_id','department','location','status','note'];
+                  'warranty_end','user_name','usage_start_date','department','location','status','note'];
   fields.forEach(f => {
     const el = document.getElementById(`f_${f}`);
     if (el) el.value = asset[f] || '';
   });
   // PC사양 필드 토글
   toggleSpecFields();
+  toggleUsageStartDate();
   openModal('registerModal');
+}
+
+// 상태가 '사용중'일 때만 사용 시작일 입력란을 노출
+function toggleUsageStartDate() {
+  const status = document.getElementById('f_status')?.value;
+  const wrap = document.getElementById('usageStartDateWrap');
+  if (!wrap) return;
+  if (status === '사용중') wrap.classList.remove('hidden');
+  else wrap.classList.add('hidden');
 }
 
 async function saveAsset() {
@@ -882,7 +890,7 @@ async function saveAsset() {
 
   const fields = ['asset_no','asset_category','asset_name','manufacturer','model_name',
                   'serial_no','cpu','mem','ssd','spec','purchase_date','purchase_price','vendor',
-                  'warranty_end','user_name','user_id','department','location','status','note'];
+                  'warranty_end','user_name','usage_start_date','department','location','status','note'];
 
   const payload = {};
   fields.forEach(f => {
@@ -942,10 +950,11 @@ async function saveAsset() {
 function resetRegisterForm() {
   const fields = ['f_asset_no','f_asset_category','f_asset_name','f_manufacturer','f_model_name',
                   'f_serial_no','f_cpu','f_mem','f_ssd','f_spec','f_purchase_date','f_purchase_price','f_vendor',
-                  'f_warranty_end','f_user_name','f_user_id','f_department','f_location','f_note'];
+                  'f_warranty_end','f_user_name','f_usage_start_date','f_department','f_location','f_note'];
   fields.forEach(f => { const el = document.getElementById(f); if (el) el.value = ''; });
   const statusEl = document.getElementById('f_status');
   if (statusEl) statusEl.value = '사용중';
+  toggleUsageStartDate();
   // 사양 필드 초기화
   const pcSpec = document.getElementById('pcSpecFields');
   const genSpec = document.getElementById('generalSpecFields');
@@ -1067,9 +1076,12 @@ async function submitAction() {
     const user     = document.getElementById('actionUser')?.value?.trim();
     const dept     = document.getElementById('actionDept')?.value?.trim();
     const location = document.getElementById('actionLocation')?.value?.trim();
+    const returnDate = document.getElementById('actionReturnDate')?.value;
     if (user) updatePayload.user_name = user;
     if (dept) updatePayload.department = dept;
     if (location) updatePayload.location = location;
+    updatePayload.checkout_date   = actionDate;
+    updatePayload.return_due_date = returnDate || '';
   }
   if (actionType === '매각') {
     const salePrice = document.getElementById('actionSalePrice')?.value;
@@ -1138,7 +1150,7 @@ function renderCheckoutPage() {
   const items = allAssets.filter(a => a.status === '반출');
   const tbody = document.getElementById('checkoutTableBody');
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-400">현재 반출 중인 자산이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-10 text-gray-400">현재 반출 중인 자산이 없습니다.</td></tr>';
     return;
   }
   tbody.innerHTML = items.map(a => `
@@ -1147,6 +1159,8 @@ function renderCheckoutPage() {
       <td class="font-medium">${a.asset_name}<br><span class="text-xs text-gray-400">${a.manufacturer||''} ${a.model_name||''}</span></td>
       <td>${a.user_name||'-'}</td>
       <td>${a.department||'-'}</td>
+      <td class="text-xs text-gray-600">${a.checkout_date||'-'}</td>
+      <td class="text-xs ${a.return_due_date && new Date(a.return_due_date) < new Date() ? 'text-red-600 font-semibold' : 'text-gray-600'}">${a.return_due_date||'-'}</td>
       <td class="text-xs text-gray-500">${a.location||'-'}<br><span class="text-gray-400">${a.note||''}</span></td>
       <td class="text-center">
         <button class="action-btn btn-return" onclick="openActionModal('${a.id}','반납','반납 처리')">
@@ -1285,62 +1299,6 @@ async function loadHistory() {
   }
 }
 
-// ============================================================
-// 보증 만료 관리
-// ============================================================
-let warrantyList = [];
-
-function renderWarrantyPage() {
-  const today = new Date();
-  warrantyList = allAssets
-    .filter(a => a.warranty_end && !['폐기','매각'].includes(a.status))
-    .map(a => {
-      const exp = new Date(a.warranty_end);
-      const diffDays = Math.ceil((exp - today) / 86400000);
-      return { ...a, diffDays };
-    })
-    .sort((a, b) => a.diffDays - b.diffDays);
-
-  registerSortableTable('warranty', () => warrantyList, (a) => { warrantyList = a; }, renderWarrantyTable);
-  renderWarrantyTable();
-}
-
-function renderWarrantyTable() {
-  const assetsWithWarranty = warrantyList;
-
-  const expired = assetsWithWarranty.filter(a => a.diffDays <= 0).length;
-  const d30     = assetsWithWarranty.filter(a => a.diffDays > 0 && a.diffDays <= 30).length;
-  const d90     = assetsWithWarranty.filter(a => a.diffDays > 30 && a.diffDays <= 90).length;
-
-  document.getElementById('warranty-expired-count').textContent = expired;
-  document.getElementById('warranty-30d-count').textContent     = d30;
-  document.getElementById('warranty-90d-count').textContent     = d90;
-
-  const tbody = document.getElementById('warrantyTableBody');
-  if (!assetsWithWarranty.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-gray-400">보증 정보가 없습니다.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = assetsWithWarranty.map(a => {
-    const rowCls = a.diffDays <= 0 ? 'warranty-expired' : a.diffDays <= 30 ? 'warranty-30d' : a.diffDays <= 90 ? 'warranty-90d' : '';
-    const dayText = a.diffDays <= 0
-      ? `<span class="text-red-600 font-bold">만료 ${Math.abs(a.diffDays)}일 경과</span>`
-      : `<span class="${a.diffDays<=30?'text-orange-600':a.diffDays<=90?'text-yellow-600':'text-green-600'} font-semibold">${a.diffDays}일 남음</span>`;
-    return `
-      <tr class="${rowCls}">
-        <td class="font-mono text-xs text-blue-700">${a.asset_no}</td>
-        <td class="font-medium text-sm">${a.asset_name}</td>
-        <td class="text-xs text-gray-500">${a.manufacturer||''} ${a.model_name||''}</td>
-        <td class="text-xs">${a.user_name||'-'} / ${a.department||'-'}</td>
-        <td class="text-sm">${a.warranty_end}</td>
-        <td>${dayText}</td>
-        <td><span class="badge badge-${a.status}">${a.status}</span></td>
-      </tr>
-    `;
-  }).join('');
-}
-
 // 구매일 기준 5년 이상 경과한 PC/노트북 목록 (교체·폐기 검토 대상)
 let lifecycleList = [];
 
@@ -1416,7 +1374,7 @@ function exportExcel() {
       '구매처': a.vendor,
       '보증만료일': a.warranty_end,
       '사용자': a.user_name,
-      '사번': a.user_id,
+      '사용시작일': a.usage_start_date,
       '부서': a.department,
       '위치': a.location,
       '상태': a.status,
