@@ -504,7 +504,7 @@ async function saveSubscription() {
     if (cur === 'page-sub-list')    renderSubTable();
     if (cur === 'page-sub-renewal') renderRenewalPage();
     if (cur === 'page-sub-cost')    renderCostAnalysis();
-    if (cur === 'page-dashboard')   renderSubDashboard();
+    if (cur === 'page-dashboard' && typeof renderExecutiveSummary === 'function') renderExecutiveSummary();
     document.getElementById('editSubId').value = '';
     document.getElementById('subRegisterModalTitle').innerHTML = '<i class="fas fa-credit-card text-purple-500 mr-2"></i>구독 서비스 등록';
   } catch(e) {

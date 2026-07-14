@@ -18,6 +18,7 @@ const PAGE_SIZE = 15;
 
 let statusChartInstance   = null;
 let categoryChartInstance = null;
+let execCostChartInst     = null;
 
 // ============================================================
 // 범용 테이블 정렬 (헤더 클릭 정렬) - 여러 메뉴의 목록 테이블에서 공통 사용
@@ -325,7 +326,7 @@ async function navigateTo(page) {
 
   // 페이지별 데이터 로드
   switch (page) {
-    case 'dashboard':    await renderDashboard(); break;
+    case 'dashboard':    await loadAllAssets(); await renderExecutiveSummary(); break;
     case 'assets':       await loadAllAssets(); renderAssetTable(); break;
     case 'register':     openModal('registerModal'); navigateTo('assets'); break;
     case 'checkout':     await loadAllAssets(); renderCheckoutPage(); break;
@@ -396,201 +397,129 @@ function initSidebarToggle() {
 // ============================================================
 // 대시보드
 // ============================================================
+
 // ============================================================
-// 대시보드 탭 전환
+// 경영진 요약 보고 (임원 보고용 핵심 지표)
 // ============================================================
-function switchDashTab(tab) {
-  const assetDiv = document.getElementById('dash-asset');
-  const subDiv   = document.getElementById('dash-sub');
-  const promoDiv = document.getElementById('dash-promo');
-  const azureDiv = document.getElementById('dash-azure');
-  const aiDiv    = document.getElementById('dash-ai');
-  const tabAsset = document.getElementById('dashTab-asset');
-  const tabSub   = document.getElementById('dashTab-sub');
-  const tabPromo = document.getElementById('dashTab-promo');
-  const tabAzure = document.getElementById('dashTab-azure');
-  const tabAi    = document.getElementById('dashTab-ai');
-
-  // 전체 숨김
-  [assetDiv, subDiv, promoDiv, azureDiv, aiDiv].forEach(d => d && d.classList.add('hidden'));
-  [tabAsset, tabSub, tabPromo, tabAzure, tabAi].forEach(t => t && t.classList.remove('active-tab'));
-
-  if (tab === 'asset') {
-    assetDiv && assetDiv.classList.remove('hidden');
-    tabAsset && tabAsset.classList.add('active-tab');
-  } else if (tab === 'sub') {
-    subDiv && subDiv.classList.remove('hidden');
-    tabSub && tabSub.classList.add('active-tab');
-    renderSubDashboard();
-  } else if (tab === 'promo') {
-    promoDiv && promoDiv.classList.remove('hidden');
-    tabPromo && tabPromo.classList.add('active-tab');
-    if (typeof renderPromoDashboardTab === 'function') renderPromoDashboardTab();
-  } else if (tab === 'azure') {
-    azureDiv && azureDiv.classList.remove('hidden');
-    tabAzure && tabAzure.classList.add('active-tab');
-    if (typeof renderAzureMainDashTab === 'function') renderAzureMainDashTab();
-  } else if (tab === 'ai') {
-    aiDiv && aiDiv.classList.remove('hidden');
-    tabAi && tabAi.classList.add('active-tab');
-    if (typeof renderAiLicMainDashTab === 'function') renderAiLicMainDashTab();
-  }
-}
-
-async function renderDashboard() {
-  const assets = await loadAllAssets();
-
-  const total    = assets.length;
-  const active   = assets.filter(a => a.status === '사용중').length;
-  const outCount = assets.filter(a => ['반출','수리중'].includes(a.status)).length;
-  const disposed = assets.filter(a => ['폐기','매각'].includes(a.status)).length;
-
-  document.getElementById('stat-total').textContent    = total;
-  document.getElementById('stat-active').textContent   = active;
-  document.getElementById('stat-out').textContent      = outCount;
-  document.getElementById('stat-disposed').textContent = disposed;
-
-  renderStatusChart(assets);
-  renderCategoryChart(assets);
-  renderRecentHistory();
-  renderWarrantyAlerts(assets);
-}
-
-function renderStatusChart(assets) {
-  const ctx = document.getElementById('statusChart').getContext('2d');
-  const statusMap = {};
-  assets.forEach(a => { statusMap[a.status] = (statusMap[a.status] || 0) + 1; });
-
-  const colorMap = {
-    '입고':  '#60a5fa',
-    '사용중': '#34d399',
-    '보관':  '#94a3b8',
-    '반출':  '#fb923c',
-    '반납':  '#818cf8',
-    '수리중': '#fbbf24',
-    '폐기':  '#f87171',
-    '매각':  '#c084fc',
-    '분실':  '#f472b6',
-  };
-
-  const labels = Object.keys(statusMap);
-  const data   = Object.values(statusMap);
-  const colors = labels.map(l => colorMap[l] || '#94a3b8');
-
-  if (statusChartInstance) statusChartInstance.destroy();
-  statusChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'right', labels: { font: { size: 11 }, padding: 12 } },
-      },
-      cutout: '65%',
-    },
-  });
-}
-
-function renderCategoryChart(assets) {
-  const ctx = document.getElementById('categoryChart').getContext('2d');
-  const catMap = {};
-  assets.forEach(a => {
-    const cat = a.asset_category || '기타';
-    catMap[cat] = (catMap[cat] || 0) + 1;
-  });
-
-  const labels = Object.keys(catMap);
-  const data   = Object.values(catMap);
-
-  if (categoryChartInstance) categoryChartInstance.destroy();
-  categoryChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: '자산 수',
-        data,
-        backgroundColor: 'rgba(59,130,246,0.7)',
-        borderColor: '#3b82f6',
-        borderWidth: 1,
-        borderRadius: 6,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
-        x: { ticks: { font: { size: 10 } } },
-      },
-    },
-  });
-}
-
-async function renderRecentHistory() {
+async function renderExecutiveSummary() {
   try {
-    const data = await apiFetch(`${HTABLE}?limit=6&sort=created_at`);
-    const histories = (data.data || []).reverse().slice(0, 6);
-    const el = document.getElementById('recentHistory');
-    if (!histories.length) {
-      el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">이력 없음</p>';
-      return;
+    const [subData, azCostData, azLicData, aiCostData, promoData] = await Promise.all([
+      apiFetch(`${SUB_TABLE}?limit=1000`),
+      apiFetch(`azure_costs?limit=1000`),
+      apiFetch(`azure_licenses?limit=1000`),
+      apiFetch(`ai_license_costs?limit=1000`),
+      apiFetch(`${PROMO_TABLE}?limit=1000`),
+    ]);
+    const subs       = subData?.data  || [];
+    const azCosts    = azCostData?.data || [];
+    const azLics     = azLicData?.data  || [];
+    const aiCosts    = aiCostData?.data || [];
+    const promoItems = promoData?.data  || [];
+    const APPROX_USD_KRW = 1400; // AI 라이선스(USD)를 다른 항목(KRW)과 합산 비교하기 위한 참고 환율
+
+    // ── 1) 이번달 총 IT 지출 (Azure 실제청구 + 구독 정기비용 + AI라이선스 환산) ──
+    const azPeriods = [...new Set(azCosts.map(c => c.period).filter(Boolean))].sort();
+    const latestAzP = azPeriods[azPeriods.length - 1];
+    const prevAzP   = azPeriods[azPeriods.length - 2];
+    const azLatest  = latestAzP ? azCosts.filter(c => c.period === latestAzP).reduce((s,c) => s + (Number(c.actual_cost_krw)||0), 0) : 0;
+    const azPrev    = prevAzP   ? azCosts.filter(c => c.period === prevAzP).reduce((s,c) => s + (Number(c.actual_cost_krw)||0), 0)   : 0;
+
+    const aiPeriods  = [...new Set(aiCosts.map(c => c.period).filter(Boolean))].sort();
+    const latestAiP  = aiPeriods[aiPeriods.length - 1];
+    const prevAiP    = aiPeriods[aiPeriods.length - 2];
+    const aiLatestUsd = latestAiP ? aiCosts.filter(c => c.period === latestAiP).reduce((s,c) => s + (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0), 0) : 0;
+    const aiPrevUsd    = prevAiP   ? aiCosts.filter(c => c.period === prevAiP).reduce((s,c) => s + (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0), 0)   : 0;
+
+    const subMonthlyKrw = subs.filter(s => s.status === '활성').reduce((s,x) => s + (Number(x.monthly_krw)||0), 0);
+
+    const totalLatest = azLatest + subMonthlyKrw + (aiLatestUsd * APPROX_USD_KRW);
+    const totalPrev   = azPrev   + subMonthlyKrw + (aiPrevUsd   * APPROX_USD_KRW);
+    const mom = totalLatest - totalPrev;
+    const hasHistory = azPeriods.length >= 2 || aiPeriods.length >= 2;
+
+    setEl('exec-total-cost', '₩' + Math.round(totalLatest).toLocaleString());
+    setEl('exec-total-mom', hasHistory
+      ? `전월 대비 ${mom >= 0 ? '+' : ''}₩${Math.round(mom).toLocaleString()}`
+      : 'Azure/AI 월 비용대장 데이터 축적 중');
+
+    // ── 2) 관리 자산 ──
+    const totalAssets  = allAssets.length;
+    const activeAssets = allAssets.filter(a => a.status === '사용중').length;
+    setEl('exec-asset-total', totalAssets.toLocaleString() + '대');
+    setEl('exec-asset-active', `사용중 ${activeAssets}대 (${totalAssets ? Math.round(activeAssets/totalAssets*100) : 0}%)`);
+
+    // ── 3) 30일 내 계약 만료 (구독 + AI 라이선스) ──
+    const today = new Date();
+    const subRenewal = subs.filter(s => {
+      if (!s.contract_end || s.status === '해지') return false;
+      const d = Math.ceil((new Date(s.contract_end) - today) / 86400000);
+      return d >= 0 && d <= 30;
+    });
+    const licRenewal = azLics.filter(l => {
+      if (!l.contract_end) return false;
+      const d = Math.ceil((new Date(l.contract_end) - today) / 86400000);
+      return d >= 0 && d <= 30;
+    });
+    setEl('exec-renewal-count', (subRenewal.length + licRenewal.length) + '건');
+
+    // ── 4) 즉시 조치 필요 (5년+ PC교체 / 반납기한초과 / 판촉물 재고부족) ──
+    const FIVE_YEARS_MS = 5 * 365.25 * 86400000;
+    const replaceTargets = allAssets.filter(a =>
+      a.purchase_date && a.asset_category === 'PC/노트북' &&
+      !['폐기','매각'].includes(a.status) &&
+      (today - new Date(a.purchase_date)) >= FIVE_YEARS_MS);
+    const overdueReturns = allAssets.filter(a =>
+      a.status === '반출' && a.return_due_date && new Date(a.return_due_date) < today);
+    const lowStockPromo = promoItems.filter(p => {
+      const s = Number(p.current_stock)||0, m = Number(p.stock_min)||0;
+      return m > 0 && s <= m;
+    });
+    setEl('exec-action-count', (replaceTargets.length + overdueReturns.length + lowStockPromo.length) + '건');
+    setEl('execReportDate', `기준일: ${today.toISOString().split('T')[0]} · 로그인: ${AuthManager.getCurrentUser()?.full_name || ''}`);
+
+    // ── 카테고리별 지출 비중 도넛차트 ──
+    const ctx = document.getElementById('execCostChart');
+    if (ctx) {
+      if (execCostChartInst) { execCostChartInst.destroy(); execCostChartInst = null; }
+      const vals = [azLatest, subMonthlyKrw, aiLatestUsd * APPROX_USD_KRW];
+      const labels = ['Azure', '정기결제(구독)', 'AI 라이선스(환산)'];
+      if (vals.some(v => v > 0)) {
+        execCostChartInst = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data: vals, backgroundColor: ['#3b82f6','#8b5cf6','#f59e0b'], borderWidth: 2, borderColor: '#fff' }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10 } },
+              tooltip: { callbacks: { label: c => `${c.label}: ₩${Math.round(c.raw).toLocaleString()}` } },
+            },
+            cutout: '60%',
+          },
+        });
+      }
     }
-    el.innerHTML = histories.map(h => `
-      <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-        <span class="history-badge hbadge-${h.action_type} mt-0.5 flex-shrink-0">${h.action_type}</span>
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-gray-700 truncate">${h.asset_no} · ${h.description || ''}</p>
-          <p class="text-xs text-gray-400 mt-0.5">${h.action_date} · ${h.handler || ''}</p>
-        </div>
-      </div>
-    `).join('');
-  } catch(e) {
-    document.getElementById('recentHistory').innerHTML = '<p class="text-xs text-gray-400 text-center py-4">데이터 없음</p>';
+
+    // ── 조치 필요 항목 리스트 ──
+    const listEl = document.getElementById('execActionList');
+    if (listEl) {
+      const items = [];
+      if (replaceTargets.length) items.push({ color:'red',    icon:'fa-laptop',      text:`5년 이상 경과 PC ${replaceTargets.length}대 교체 검토 필요`, page:'lifecycle' });
+      if (overdueReturns.length) items.push({ color:'orange', icon:'fa-undo',        text:`반납 기한 초과 자산 ${overdueReturns.length}건`, page:'checkout' });
+      if (lowStockPromo.length)  items.push({ color:'yellow',  icon:'fa-box',         text:`재고 부족 판촉물 ${lowStockPromo.length}건`, page:'promo-stock' });
+      if (subRenewal.length)    items.push({ color:'blue',    icon:'fa-credit-card', text:`구독 서비스 ${subRenewal.length}건 30일 내 갱신 검토`, page:'sub-renewal' });
+      if (licRenewal.length)    items.push({ color:'violet',  icon:'fa-robot',       text:`AI 라이선스 ${licRenewal.length}건 30일 내 계약 만료`, page:'ai-licenses' });
+
+      listEl.innerHTML = !items.length
+        ? `<div class="text-center py-8 text-gray-400 text-sm"><i class="fas fa-check-circle text-2xl block mb-2 text-green-400"></i>현재 즉시 조치가 필요한 항목이 없습니다.</div>`
+        : items.map(it => `
+          <div class="flex items-center justify-between p-3 bg-${it.color}-50 rounded-xl border border-${it.color}-100 cursor-pointer hover:bg-${it.color}-100/60 transition-colors" onclick="navigateTo('${it.page}')">
+            <span class="text-sm text-${it.color}-700 font-medium flex items-center gap-2"><i class="fas ${it.icon}"></i>${it.text}</span>
+            <i class="fas fa-chevron-right text-${it.color}-400 text-xs"></i>
+          </div>`).join('');
+    }
+  } catch (e) {
+    console.warn('경영진 요약 로드 실패:', e);
   }
-}
-
-function renderWarrantyAlerts(assets) {
-  const today = new Date();
-  const el = document.getElementById('warrantyAlert');
-  const alertAssets = assets
-    .filter(a => a.warranty_end && a.status === '사용중')
-    .map(a => {
-      const exp = new Date(a.warranty_end);
-      const diffDays = Math.ceil((exp - today) / 86400000);
-      return { ...a, diffDays };
-    })
-    .filter(a => a.diffDays <= 90)
-    .sort((a, b) => a.diffDays - b.diffDays)
-    .slice(0, 6);
-
-  if (!alertAssets.length) {
-    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">90일 이내 만료 예정 없음</p>';
-    return;
-  }
-
-  el.innerHTML = alertAssets.map(a => {
-    const cls = a.diffDays <= 0 ? 'bg-red-50 border-red-200' :
-                a.diffDays <= 30 ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200';
-    const textCls = a.diffDays <= 0 ? 'text-red-700' :
-                    a.diffDays <= 30 ? 'text-orange-700' : 'text-yellow-700';
-    const label = a.diffDays <= 0 ? `만료 ${Math.abs(a.diffDays)}일 경과` : `${a.diffDays}일 후 만료`;
-    return `
-      <div class="flex items-center gap-3 p-2.5 ${cls} border rounded-xl">
-        <i class="fas fa-shield-alt ${textCls}"></i>
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-gray-700 truncate">${a.asset_no} · ${a.asset_name}</p>
-          <p class="text-xs text-gray-500">${a.user_name || '-'} / ${a.department || '-'}</p>
-        </div>
-        <span class="text-xs font-bold ${textCls} whitespace-nowrap">${label}</span>
-      </div>
-    `;
-  }).join('');
 }
 
 // ============================================================
