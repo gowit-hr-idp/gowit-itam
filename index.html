@@ -176,90 +176,49 @@
 
     <!-- ===== 대시보드 ===== -->
     <section id="page-dashboard" class="page-section">
-      <div class="flex gap-2 mb-5">
-        <button onclick="switchDashTab('asset')" id="dashTab-asset" class="dash-tab active-tab px-4 py-2 rounded-lg text-sm font-semibold">🖥️ 고정자산</button>
-        <button onclick="switchDashTab('sub')" id="dashTab-sub" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">💳 정기결제</button>
-        <button onclick="switchDashTab('promo')" id="dashTab-promo" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">🎁 판촉물</button>
-        <button onclick="switchDashTab('azure')" id="dashTab-azure" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">☁️ Azure</button>
-        <button onclick="switchDashTab('ai')" id="dashTab-ai" class="dash-tab px-4 py-2 rounded-lg text-sm font-semibold">🤖 AI 라이선스</button>
-      </div>
 
-      <!-- 고정자산 대시보드 -->
-      <div id="dash-asset">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-laptop-code text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 자산</p><p id="stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-check-circle text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">사용 중</p><p id="stat-active" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-yellow-100 rounded-xl"><i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">반출/수리중</p><p id="stat-out" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-times-circle text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">폐기/매각</p><p id="stat-disposed" class="text-2xl font-bold text-gray-800">0</p></div></div>
+      <!-- ========== 경영진 요약 보고 ========== -->
+      <div class="mb-7">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-chart-line text-blue-600"></i>경영진 요약 보고</h2>
+          <p id="execReportDate" class="text-xs text-gray-400 mt-0.5">-</p>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-blue-500"></i>자산 상태별</h3><div style="height:220px;position:relative;"><canvas id="statusChart"></canvas></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>자산 분류별</h3><div style="height:220px;position:relative;"><canvas id="categoryChart"></canvas></div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-clock text-blue-500"></i>최근 변경 이력</h3><div id="recentHistory" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-shield-alt text-yellow-500"></i>보증 만료 임박 (90일)</h3><div id="warrantyAlert" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
-        </div>
-      </div>
 
-      <!-- 정기결제 대시보드 -->
-      <div id="dash-sub" class="hidden">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-purple-100 rounded-xl"><i class="fas fa-credit-card text-purple-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 구독</p><p id="sub-stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-won-sign text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">월 총 비용</p><p id="sub-stat-monthly" class="text-xl font-bold text-gray-800">-</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-calendar-check text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">연 총 비용</p><p id="sub-stat-annual" class="text-xl font-bold text-gray-800">-</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-bell text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">30일내 갱신</p><p id="sub-stat-renewal" class="text-2xl font-bold text-gray-800">0</p></div></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          <div class="stat-card rounded-2xl p-5 shadow-md text-white" style="background:linear-gradient(135deg,#2563eb,#4f46e5);">
+            <p class="text-xs text-blue-100 font-medium">이번달 총 IT 지출 (환산)</p>
+            <p id="exec-total-cost" class="text-2xl font-bold mt-1">-</p>
+            <p id="exec-total-mom" class="text-xs text-blue-100 mt-1">-</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 font-medium">관리 자산</p>
+            <p id="exec-asset-total" class="text-2xl font-bold text-gray-800 mt-1">-</p>
+            <p id="exec-asset-active" class="text-xs text-gray-400 mt-1">-</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 font-medium">30일 내 계약 만료</p>
+            <p id="exec-renewal-count" class="text-2xl font-bold text-orange-600 mt-1">-</p>
+            <p class="text-xs text-gray-400 mt-1">구독 + AI 라이선스</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <p class="text-xs text-gray-500 font-medium">즉시 조치 필요</p>
+            <p id="exec-action-count" class="text-2xl font-bold text-red-600 mt-1">-</p>
+            <p class="text-xs text-gray-400 mt-1">교체대상 / 반납초과 / 재고부족</p>
+          </div>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-purple-500"></i>카테고리별 월 비용</h3><div style="height:220px;position:relative;"><canvas id="subCategoryChart"></canvas></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-purple-500"></i>결제 주기별 현황</h3><div style="height:220px;position:relative;"><canvas id="subCycleChart"></canvas></div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i>30일 이내 갱신 예정</h3><div id="dashRenewalList" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-list text-purple-500"></i>최근 등록 구독</h3><div id="dashRecentSubs" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
-        </div>
-      </div>
 
-      <!-- 판촉물 대시보드 -->
-      <div id="dash-promo" class="hidden">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-orange-100 rounded-xl"><i class="fas fa-gift text-orange-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 품목</p><p id="promo-stat-total" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-check-circle text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">정상 재고</p><p id="promo-stat-ok" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">재고 부족</p><p id="promo-stat-low" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-boxes text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 재고 금액</p><p id="promo-stat-value" class="text-lg font-bold text-gray-800">-</p></div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-orange-500"></i>분류별 재고 현황</h3><div style="height:220px;position:relative;"><canvas id="promoCategoryChart"></canvas></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i>재고 부족 품목</h3><div id="promoLowStock" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 lg:col-span-1">
+            <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-blue-500"></i>카테고리별 지출 비중 (이번달)</h3>
+            <div style="height:200px;position:relative;"><canvas id="execCostChart"></canvas></div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 lg:col-span-2">
+            <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-triangle text-red-500"></i>조치 필요 항목</h3>
+            <div id="execActionList" class="space-y-2 max-h-56 overflow-y-auto"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Azure 대시보드 -->
-      <div id="dash-azure" class="hidden">
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-dollar-sign text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">이번달 총 비용</p><p id="dashaz-stat-cost" class="text-xl font-bold text-gray-800">₩0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-indigo-100 rounded-xl"><i class="fas fa-server text-indigo-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">리소스 수</p><p id="dashaz-stat-resources" class="text-2xl font-bold text-gray-800">0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-arrow-trend-up text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">전월 대비</p><p id="dashaz-stat-mom" class="text-xl font-bold text-gray-800">-</p></div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>서비스별 비용</h3><div style="height:220px;position:relative;"><canvas id="dashAzCostChart"></canvas></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i>서비스구분별 리소스 비용</h3><p class="text-xs text-gray-400 mb-3">리소스 대장 연동</p><div id="dashAzResGroupSummary" class="space-y-1 max-h-52 overflow-y-auto"></div></div>
-        </div>
-      </div>
-
-      <!-- AI 라이선스 대시보드 -->
-      <div id="dash-ai" class="hidden">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-purple-100 rounded-xl"><i class="fas fa-robot text-purple-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 라이선스 종류</p><p id="dashai-stat-total" class="text-2xl font-bold text-gray-800">0종</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-users text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">시트 사용/전체</p><p id="dashai-stat-seats" class="text-xl font-bold text-gray-800">0 / 0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-dollar-sign text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">월 총 비용</p><p id="dashai-stat-cost" class="text-xl font-bold text-gray-800">$0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-bell text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">60일내 만료</p><p id="dashai-stat-expiring" class="text-2xl font-bold text-gray-800">0</p></div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-pie text-purple-500"></i>서비스별 월 비용 분포</h3><div style="height:220px;position:relative;"><canvas id="dashAiLicTypeChart"></canvas></div></div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i>계약 만료 임박</h3><div id="dashAiLicExpiring" class="space-y-2 max-h-52 overflow-y-auto"></div></div>
-        </div>
-      </div>
     </section>
 
     <!-- ===== 자산 대장 ===== -->
@@ -445,7 +404,7 @@
               <th class="px-4 py-3 text-right">입고 누계</th><th class="px-4 py-3 text-right">출고 누계</th>
               <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600" data-sort-table="promo" data-sort-field="current_stock" onclick="sortTableHeader('promo','current_stock','number')">현재 재고<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
               <th class="px-4 py-3 text-right">안전재고</th>
-              <th class="px-4 py-3 text-right">단가</th><th class="px-4 py-3 text-left">담당자</th>
+              <th class="px-4 py-3 text-right">구매금액</th><th class="px-4 py-3 text-left">담당자</th>
               <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="promo" data-sort-field="status" onclick="sortTableHeader('promo','status','string')">상태<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
               <th class="px-4 py-3 text-center">관리</th>
             </tr></thead>
@@ -539,7 +498,7 @@
                 </select>
               </div>
               <div><label class="form-label">규격/사이즈</label><input type="text" id="pf_spec" placeholder="예: A4, L사이즈, 500ml" class="form-input"/></div>
-              <div><label class="form-label">단가(원)</label><input type="number" id="pf_unit_price" placeholder="개당 단가" class="form-input"/></div>
+              <div><label class="form-label">구매금액(원)</label><input type="number" id="pf_unit_price" placeholder="이번 발주 전체 금액" class="form-input"/></div>
               <div><label class="form-label">안전재고</label><input type="number" id="pf_stock_min" placeholder="최소 유지 수량" class="form-input" value="10"/></div>
               <div><label class="form-label">초기 입고 수량 *</label><input type="number" id="pf_init_stock" placeholder="이번에 입고되는 수량" class="form-input" value="0" min="0"/></div>
               <div><label class="form-label">입고 일자 *</label><input type="date" id="pf_in_date" class="form-input"/></div>
