@@ -184,18 +184,19 @@ function renderAzCostServiceMomTable() {
 
 // 리소스 대장의 "서비스 구분" > "리소스 그룹" 계층 구조로 예상 비용을 집계
 // (GM 업무단위: AI framework / GoWorks 같은 관계 -> GoWorks 안에 구독관리/sendgrid 리소스그룹 이 있는 식의 연속성 확인용)
-function renderAzResourceGroupSummary() {
-  const box = document.getElementById('azResGroupSummary');
+function renderAzResourceGroupSummary(targetId = 'azResGroupSummary', resourcesArr = null) {
+  const box = document.getElementById(targetId);
   if (!box) return;
+  const resources = resourcesArr || allAzureResources;
 
-  if (!allAzureResources.length) {
+  if (!resources.length) {
     box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">등록된 리소스가 없습니다.</div>`;
     return;
   }
 
   // 서비스구분 > 리소스그룹 계층으로 묶기
   const groups = {}; // { service_group: { total, count, resGroups: { resource_group: { total, count } } } }
-  allAzureResources.forEach(r => {
+  resources.forEach(r => {
     const sg = r.service_group || '기타';
     const rg = r.resource_group || '(미지정)';
     const cost = Number(r.monthly_cost_krw) || 0;
@@ -277,22 +278,8 @@ async function renderAzureMainDashTab() {
       }
     }
 
-    // 리소스 타입별 (도넛)
-    const resCtx = document.getElementById('dashAzResTypeChart');
-    if (resCtx) {
-      if (dashAzResTypeChartInst) { dashAzResTypeChartInst.destroy(); dashAzResTypeChartInst = null; }
-      const map = {};
-      resources.forEach(r => { const k = r.resource_type || '기타'; map[k] = (map[k]||0)+1; });
-      const entries = Object.entries(map).sort((a,b) => b[1]-a[1]);
-      if (entries.length) {
-        const colors = ['#3b82f6','#6366f1','#8b5cf6','#a855f7','#ec4899','#f59e0b','#10b981','#06b6d4'];
-        dashAzResTypeChartInst = new Chart(resCtx, {
-          type: 'doughnut',
-          data: { labels: entries.map(e=>e[0]), datasets: [{ data: entries.map(e=>e[1]), backgroundColor: colors, borderWidth:2, borderColor:'#fff' }] },
-          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:12 } } }, cutout:'60%' },
-        });
-      }
-    }
+    // 서비스구분별 리소스 비용 (Azure 자체 대시보드와 동일한 방식으로 통일)
+    renderAzResourceGroupSummary('dashAzResGroupSummary', resources);
   } catch (e) {
     console.warn('Azure 대시보드 탭 로드 실패:', e);
   }
