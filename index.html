@@ -110,6 +110,8 @@
       </button>
       <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-licenses"><i class="fas fa-id-card w-4 text-center flex-shrink-0"></i><span class="sidebar-text">라이선스 현황</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월 비용대장</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-keys"><i class="fas fa-key w-4 text-center flex-shrink-0"></i><span class="sidebar-text">API 키 관리</span></a></li>
         <li class="admin-only hidden"><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="ai-settings"><i class="fas fa-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">설정</span></a></li>
       </ul>
     </div>
@@ -250,7 +252,7 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-purple-100 rounded-xl"><i class="fas fa-robot text-purple-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">총 라이선스 종류</p><p id="dashai-stat-total" class="text-2xl font-bold text-gray-800">0종</p></div></div>
           <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-blue-100 rounded-xl"><i class="fas fa-users text-blue-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">시트 사용/전체</p><p id="dashai-stat-seats" class="text-xl font-bold text-gray-800">0 / 0</p></div></div>
-          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-won-sign text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">월 총 비용</p><p id="dashai-stat-cost" class="text-xl font-bold text-gray-800">₩0</p></div></div>
+          <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-green-100 rounded-xl"><i class="fas fa-dollar-sign text-green-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">월 총 비용</p><p id="dashai-stat-cost" class="text-xl font-bold text-gray-800">$0</p></div></div>
           <div class="stat-card bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div class="p-3 bg-red-100 rounded-xl"><i class="fas fa-bell text-red-600 text-2xl"></i></div><div><p class="text-xs text-gray-500 font-medium">60일내 만료</p><p id="dashai-stat-expiring" class="text-2xl font-bold text-gray-800">0</p></div></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -753,8 +755,8 @@
                 <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="azlic" data-sort-field="total_seats" onclick="sortTableHeader('azlic','total_seats','number')">총 시트<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
                 <th class="px-4 py-3 text-center">사용 시트</th>
                 <th class="px-4 py-3 text-center">잔여</th>
-                <th class="px-4 py-3 text-right">단가(KRW/월)</th>
-                <th class="px-4 py-3 text-right">월 총액(KRW)</th>
+                <th class="px-4 py-3 text-right">단가(USD/월)</th>
+                <th class="px-4 py-3 text-right">월 총액(USD)</th>
                 <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="azlic" data-sort-field="contract_end" onclick="sortTableHeader('azlic','contract_end','string')">계약 만료<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
                 <th class="px-4 py-3 text-left">담당자</th>
                 <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="azlic" data-sort-field="status" onclick="sortTableHeader('azlic','status','string')">상태<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
@@ -762,6 +764,90 @@
               </tr>
             </thead>
             <tbody id="azLicTableBody"><tr><td colspan="12" class="text-center py-16 text-gray-400"><i class="fas fa-robot text-4xl block mb-3 opacity-20"></i>등록된 AI 라이선스가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 라이선스 월 비용대장 ===== -->
+    <section id="page-ai-costs" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex items-end gap-1.5">
+            <div><label class="text-xs font-semibold text-gray-600 block mb-1">시작 월</label><input type="month" id="aiCostFilterFrom" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"/></div>
+            <span class="pb-2 text-gray-400 font-semibold text-sm">~</span>
+            <div><label class="text-xs font-semibold text-gray-600 block mb-1">종료 월</label><input type="month" id="aiCostFilterTo" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"/></div>
+          </div>
+          <div class="min-w-48">
+            <label class="text-xs font-semibold text-gray-600 block mb-1">라이선스</label>
+            <select id="aiCostFilterLicense" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-500"><option value="">전체</option></select>
+          </div>
+          <div class="flex gap-2 pb-0">
+            <button onclick="loadAiLicenseCosts()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+            <button onclick="resetAiCostFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+          </div>
+          <div class="ml-auto"><button onclick="openAiCostModal()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5 font-medium"><i class="fas fa-plus"></i>비용 등록</button></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div class="bg-violet-50 border border-violet-100 rounded-xl p-4"><div class="text-xs text-violet-600 font-semibold mb-1">이번달 총액(USD)</div><div id="aiCostStatTotal" class="text-xl font-bold text-violet-800">$0</div></div>
+        <div class="bg-green-50 border border-green-100 rounded-xl p-4"><div class="text-xs text-green-600 font-semibold mb-1">전월 대비</div><div id="aiCostStatMom" class="text-xl font-bold text-green-800">-</div></div>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4"><div class="text-xs text-gray-600 font-semibold mb-1">등록 건수</div><div id="aiCostStatCount" class="text-xl font-bold text-gray-700">0건</div></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="aiCostCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="exportAiCostExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aicost" data-sort-field="period" onclick="sortTableHeader('aicost','period','string')">기간<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aicost" data-sort-field="license_name" onclick="sortTableHeader('aicost','license_name','string')">라이선스<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right">시트비용(USD)</th>
+                <th class="px-4 py-3 text-right">추가사용료(USD)</th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600" data-sort-table="aicost" data-sort-field="total_usd" onclick="sortTableHeader('aicost','total_usd','number')">합계(USD)<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="aiCostTableBody"><tr><td colspan="7" class="text-center py-16 text-gray-400"><i class="fas fa-file-invoice-dollar text-4xl block mb-3 opacity-20"></i>비용 데이터가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 라이선스 API 키 관리 ===== -->
+    <section id="page-ai-keys" class="page-section hidden">
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+        <i class="fas fa-shield-alt text-amber-500 text-xl"></i>
+        <div>
+          <div class="font-semibold text-amber-800 text-sm">API 키 관리 (라벨 전용)</div>
+          <div class="text-xs text-amber-700 mt-0.5">⚠️ 실제 API 키 값은 이 화면에 절대 입력하지 마세요. 이 시스템의 데이터는 로그인한 사용자 누구나 조회 가능합니다. 키를 식별할 수 있는 이름/용도만 기록하고, 실제 키 값은 비밀번호 관리자 등 별도 보안 저장소에 보관하세요.</div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="aiKeyCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="openAiKeyModal()" class="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 flex items-center gap-1 border border-amber-200"><i class="fas fa-plus"></i>키 등록</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aikey" data-sort-field="license_name" onclick="sortTableHeader('aikey','license_name','string')">라이선스<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aikey" data-sort-field="key_label" onclick="sortTableHeader('aikey','key_label','string')">키 라벨<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">용도</th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aikey" data-sort-field="issued_date" onclick="sortTableHeader('aikey','issued_date','string')">발급일<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="aikey" data-sort-field="status" onclick="sortTableHeader('aikey','status','string')">상태<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="aiKeyTableBody"><tr><td colspan="7" class="text-center py-16 text-gray-400"><i class="fas fa-key text-4xl block mb-3 opacity-20"></i>등록된 키가 없습니다.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1060,12 +1146,9 @@
       <div><label class="form-label">플랜/SKU</label><input type="text" id="azl_plan" placeholder="예: Business Premium" class="form-input"/></div>
       <div><label class="form-label">총 시트 수</label><input type="number" id="azl_total_seats" placeholder="시트제 아니면 비워두세요" class="form-input" min="0"/></div>
       <div><label class="form-label">사용 시트 수</label><input type="number" id="azl_used_seats" placeholder="0" class="form-input" min="0"/></div>
-      <div><label class="form-label">단가(USD/월/시트)</label><input type="number" id="azl_unit_price_usd" oninput="suggestKrwFromUsd()" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
-      <div><label class="form-label">단가(KRW/월/시트)</label><input type="number" id="azl_unit_price_krw" placeholder="0" class="form-input" min="0"/>
-        <p class="text-xs text-gray-400 mt-1">※ 실제 계산·차트는 이 KRW 값을 기준으로 합니다. USD만 아시면 위 칸에 입력 시 참고용으로 자동 환산됩니다.</p>
-      </div>
-      <div class="md:col-span-2"><label class="form-label">추가 사용료(원/월)</label><input type="number" id="azl_additional_cost_krw" placeholder="0" class="form-input" min="0"/>
-        <p class="text-xs text-gray-400 mt-1">시트 수와 무관한 비용(API 사용량 초과 요금, 사용량 기반 과금 등)이 있으면 여기에 입력하세요. 시트 없이 이 항목만으로 등록도 가능합니다.</p>
+      <div><label class="form-label">단가(USD/월/시트)</label><input type="number" id="azl_unit_price_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div class="md:col-span-2"><label class="form-label">추가 사용료(USD/월)</label><input type="number" id="azl_additional_cost_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/>
+        <p class="text-xs text-gray-400 mt-1">시트 수와 무관한 비용(API 사용량 초과 요금 등). 시트 없이 이 항목만으로 등록도 가능합니다. AI 라이선스 비용은 전체 USD로 통합 관리합니다.</p>
       </div>
       <div><label class="form-label">결제 주기</label><select id="azl_billing_cycle" class="form-input"><option value="월간">월간</option><option value="연간">연간</option></select></div>
       <div><label class="form-label">상태</label><select id="azl_status" class="form-input"><option value="활성">활성</option><option value="만료">만료</option><option value="중단">중단</option><option value="검토중">검토중</option></select></div>
@@ -1075,10 +1158,66 @@
       <div><label class="form-label">담당자</label><input type="text" id="azl_owner" class="form-input"/></div>
       <div><label class="form-label">담당 부서</label><input type="text" id="azl_department" class="form-input"/></div>
       <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="azl_note" rows="2" class="form-input resize-none"></textarea></div>
+
+      <div class="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1"><i class="fas fa-key text-amber-500 mr-1"></i>API 키 관리 (선택)</p>
+        <p class="text-xs text-gray-400 mb-2">⚠️ 실제 API 키 값은 여기에 입력하지 마세요. 키를 식별할 수 있는 라벨/용도만 기록하는 용도입니다. 실제 키는 별도 보안 저장소(비밀번호 관리자 등)에 보관하세요.</p>
+        <button type="button" onclick="closeModal('azureLicModal'); navigateTo('ai-keys')" class="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100"><i class="fas fa-external-link-alt mr-1"></i>API 키 관리 화면으로 이동</button>
+      </div>
     </form>
     <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
       <button onclick="saveAzureLicense()" class="px-5 py-2.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
       <button onclick="closeModal('azureLicModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: AI 라이선스 월 비용 등록/수정 ========== -->
+<div id="aiCostModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="aiCostModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-file-invoice-dollar text-violet-500"></i>AI 라이선스 비용 등록</h2>
+      <button onclick="closeModal('aiCostModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="aiCostEditId"/>
+      <div><label class="form-label">기간(월) *</label><input type="month" id="aic_period" class="form-input" required/></div>
+      <div><label class="form-label">라이선스 *</label>
+        <select id="aic_license_name" class="form-input" required><option value="">선택하세요</option></select>
+      </div>
+      <div><label class="form-label">시트 비용(USD)</label><input type="number" id="aic_seat_cost_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div><label class="form-label">추가 사용료(USD)</label><input type="number" id="aic_additional_cost_usd" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><input type="text" id="aic_note" class="form-input" placeholder="메모"/></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAiLicenseCost()" class="px-5 py-2.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('aiCostModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: API 키 등록/수정 (라벨 전용, 실제 키 값 저장 안 함) ========== -->
+<div id="aiKeyModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="aiKeyModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-key text-amber-500"></i>API 키 등록</h2>
+      <button onclick="closeModal('aiKeyModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="px-5 pt-4"><div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">⚠️ 실제 API 키 값은 절대 입력하지 마세요. 식별용 라벨/용도만 기록합니다.</div></div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="aiKeyEditId"/>
+      <div class="md:col-span-2"><label class="form-label">라이선스 *</label>
+        <select id="aik_license_name" class="form-input" required><option value="">선택하세요</option></select>
+      </div>
+      <div><label class="form-label">키 라벨 *</label><input type="text" id="aik_key_label" placeholder="예: 법인계정-프로덕션" class="form-input" required/></div>
+      <div><label class="form-label">발급일</label><input type="date" id="aik_issued_date" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">용도</label><input type="text" id="aik_purpose" placeholder="예: 사내 챗봇 연동용" class="form-input"/></div>
+      <div><label class="form-label">상태</label><select id="aik_status" class="form-input"><option value="활성">활성</option><option value="비활성">비활성</option><option value="폐기">폐기</option></select></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><input type="text" id="aik_note" class="form-input"/></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAiLicenseKey()" class="px-5 py-2.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('aiKeyModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
     </div>
   </div>
 </div>
