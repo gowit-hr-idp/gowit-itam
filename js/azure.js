@@ -295,7 +295,7 @@ async function renderAiLicMainDashTab() {
 
     const totalSeats = licenses.reduce((s,l) => s + (Number(l.total_seats)||0), 0);
     const usedSeats  = licenses.reduce((s,l) => s + (Number(l.used_seats)||0), 0);
-    const monthlyCost = licenses.reduce((s,l) => s + licenseMonthlyCostKrw(l), 0);
+    const monthlyCost = licenses.reduce((s,l) => s + licenseMonthlyCostUsd(l), 0);
     const expiring = licenses
       .filter(l => l.contract_end)
       .map(l => ({ ...l, days: Math.ceil((new Date(l.contract_end) - new Date()) / 86400000) }))
@@ -304,7 +304,7 @@ async function renderAiLicMainDashTab() {
 
     setEl('dashai-stat-total',    licenses.length + '종');
     setEl('dashai-stat-seats',    `${usedSeats.toLocaleString()} / ${totalSeats.toLocaleString()}`);
-    setEl('dashai-stat-cost',     '₩' + monthlyCost.toLocaleString());
+    setEl('dashai-stat-cost',     '$' + monthlyCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
     setEl('dashai-stat-expiring', expiring.length);
 
     const ctx = document.getElementById('dashAiLicTypeChart');
@@ -313,7 +313,7 @@ async function renderAiLicMainDashTab() {
       const map = {};
       licenses.forEach(l => {
         const key = l.license_type || '기타';
-        map[key] = (map[key]||0) + licenseMonthlyCostKrw(l);
+        map[key] = (map[key]||0) + licenseMonthlyCostUsd(l);
       });
       const entries = Object.entries(map).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
       if (entries.length) {
@@ -321,7 +321,7 @@ async function renderAiLicMainDashTab() {
         dashAiLicTypeChartInst = new Chart(ctx, {
           type: 'doughnut',
           data: { labels: entries.map(e=>e[0]), datasets: [{ data: entries.map(e=>e[1]), backgroundColor: colors, borderWidth:2, borderColor:'#fff' }] },
-          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:12 } }, tooltip:{ callbacks:{ label: c => `${c.label}: ₩${c.raw.toLocaleString()}` } } }, cutout:'60%' },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:12 } }, tooltip:{ callbacks:{ label: c => `${c.label}: $${c.raw.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}` } } }, cutout:'60%' },
         });
       }
     }
@@ -600,24 +600,11 @@ async function renderAzureLicenses() {
   }
 }
 
-// USD 단가 입력 시, 계산에 실제로 쓰이는 KRW 단가를 자동으로 채워준다
-// (KRW를 비워두면 대시보드/차트 집계에서 0으로 처리되기 때문)
-const AZL_APPROX_USD_KRW_RATE = 1400;
-function suggestKrwFromUsd() {
-  const usdEl = document.getElementById('azl_unit_price_usd');
-  const krwEl = document.getElementById('azl_unit_price_krw');
-  if (!usdEl || !krwEl) return;
-  const usd = Number(usdEl.value) || 0;
-  // 이미 KRW 값을 직접 입력해둔 경우엔 덮어쓰지 않는다
-  if (usd > 0 && !krwEl.value) {
-    krwEl.value = Math.round(usd * AZL_APPROX_USD_KRW_RATE);
-  }
-}
-
 // 라이선스 1건의 월 비용 계산 (시트기반 + 시트무관 추가사용료를 합산 → 어떤 과금방식이든 대응)
-function licenseMonthlyCostKrw(l) {
-  const seatCost = (Number(l.unit_price_krw) || 0) * (Number(l.total_seats) || 0);
-  const extraCost = Number(l.additional_cost_krw) || 0;
+// AI 라이선스 비용은 전체 USD 기준으로 통합 관리한다.
+function licenseMonthlyCostUsd(l) {
+  const seatCost = (Number(l.unit_price_usd) || 0) * (Number(l.total_seats) || 0);
+  const extraCost = Number(l.additional_cost_usd) || 0;
   return seatCost + extraCost;
 }
 
@@ -627,7 +614,7 @@ function renderAzureLicSummary() {
 
   const totalSeats = allAzureLicenses.reduce((s, l) => s + (Number(l.total_seats)||0), 0);
   const usedSeats  = allAzureLicenses.reduce((s, l) => s + (Number(l.used_seats)||0), 0);
-  const totalMonthlyCost = allAzureLicenses.reduce((s, l) => s + licenseMonthlyCostKrw(l), 0);
+  const totalMonthlyCost = allAzureLicenses.reduce((s, l) => s + licenseMonthlyCostUsd(l), 0);
   const expiringSoon = allAzureLicenses.filter(l => {
     if (!l.contract_end) return false;
     const days = Math.ceil((new Date(l.contract_end) - new Date()) / 86400000);
@@ -645,7 +632,7 @@ function renderAzureLicSummary() {
     </div>
     <div class="bg-green-50 border border-green-100 rounded-xl p-4">
       <div class="text-xs font-semibold text-green-600 mb-1">월 총 라이선스 비용</div>
-      <div class="text-2xl font-bold text-green-800">₩${totalMonthlyCost.toLocaleString()}</div>
+      <div class="text-2xl font-bold text-green-800">$${totalMonthlyCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
     </div>
     ${expiringSoon > 0 ? `
     <div class="bg-red-50 border border-red-100 rounded-xl p-4 md:col-span-1">
@@ -664,7 +651,7 @@ function renderAzLicTypeChart() {
   const map = {};
   allAzureLicenses.forEach(l => {
     const key = l.license_type || '기타';
-    const cost = licenseMonthlyCostKrw(l);
+    const cost = licenseMonthlyCostUsd(l);
     map[key] = (map[key] || 0) + cost;
   });
   const entries = Object.entries(map).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
@@ -681,7 +668,7 @@ function renderAzLicTypeChart() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: c => `${c.label}: ₩${c.raw.toLocaleString()}` } },
+        tooltip: { callbacks: { label: c => `${c.label}: $${c.raw.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}` } },
       },
       cutout: '60%',
     },
@@ -732,8 +719,8 @@ function renderAzureLicTable() {
     const used      = Number(l.used_seats)     || 0;
     const remaining = total - used;
     const usePct    = total > 0 ? Math.round((used / total) * 100) : 0;
-    const unitKrw   = Number(l.unit_price_krw) || 0;
-    const monthlyKrw = licenseMonthlyCostKrw(l);
+    const unitUsd    = Number(l.unit_price_usd) || 0;
+    const monthlyUsd = licenseMonthlyCostUsd(l);
 
     // 만료일 계산
     let expireInfo = '-';
@@ -763,8 +750,8 @@ function renderAzureLicTable() {
           <div class="text-xs text-gray-400">${usePct}%</div>
         </td>
         <td class="px-4 py-2.5 text-center ${remaining < 0 ? 'text-red-600 font-bold' : remaining === 0 ? 'text-orange-500 font-semibold' : 'text-green-600 font-semibold'}">${remaining}</td>
-        <td class="px-4 py-2.5 text-right text-xs text-gray-500">${unitKrw ? '₩'+unitKrw.toLocaleString() : '-'}</td>
-        <td class="px-4 py-2.5 text-right text-sm font-semibold text-violet-700">${monthlyKrw ? '₩'+monthlyKrw.toLocaleString() : '-'}</td>
+        <td class="px-4 py-2.5 text-right text-xs text-gray-500">${unitUsd ? '$'+unitUsd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
+        <td class="px-4 py-2.5 text-right text-sm font-semibold text-violet-700">${monthlyUsd ? '$'+monthlyUsd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
         <td class="px-4 py-2.5 text-xs">${expireInfo}</td>
         <td class="px-4 py-2.5 text-xs text-gray-500">${l.owner || '-'}</td>
         <td class="px-4 py-2.5 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${sbCls}">${l.status || '-'}</span></td>
@@ -786,7 +773,7 @@ function openAzureLicModal(id) {
   document.getElementById('azLicEditId').value = id || '';
 
   const fields = ['license_name','license_type','plan','total_seats','used_seats',
-    'unit_price_usd','unit_price_krw','additional_cost_krw','billing_cycle','status',
+    'unit_price_usd','additional_cost_usd','billing_cycle','status',
     'contract_start','contract_end','auto_renew','owner','department','note'];
 
   if (isEdit) {
@@ -826,8 +813,7 @@ async function saveAzureLicense() {
     total_seats:         Number(document.getElementById('azl_total_seats')?.value)         || 0,
     used_seats:          Number(document.getElementById('azl_used_seats')?.value)          || 0,
     unit_price_usd:      Number(document.getElementById('azl_unit_price_usd')?.value)      || 0,
-    unit_price_krw:      Number(document.getElementById('azl_unit_price_krw')?.value)      || 0,
-    additional_cost_krw: Number(document.getElementById('azl_additional_cost_krw')?.value) || 0,
+    additional_cost_usd: Number(document.getElementById('azl_additional_cost_usd')?.value) || 0,
     billing_cycle:       document.getElementById('azl_billing_cycle')?.value || '월간',
     status:              document.getElementById('azl_status')?.value       || '활성',
     contract_start:      document.getElementById('azl_contract_start')?.value,
@@ -840,7 +826,7 @@ async function saveAzureLicense() {
 
   if (!payload.license_name) { showToast('제품명을 입력해주세요.', 'warning'); return; }
   // 총 시트 수는 더 이상 필수가 아님 (사용량 기반/정액제 서비스는 시트 개념이 없을 수 있음)
-  if (!payload.total_seats && !payload.unit_price_krw && !payload.additional_cost_krw) {
+  if (!payload.total_seats && !payload.unit_price_usd && !payload.additional_cost_usd) {
     showToast('시트 단가 또는 추가 사용료 중 최소 하나는 입력해주세요.', 'warning');
     return;
   }
@@ -866,6 +852,305 @@ async function deleteAzureLicense(id, name) {
     await azApiFetch(`${AZ_LIC_TBL}/${id}`, { method: 'DELETE' });
     showToast('라이선스가 삭제되었습니다.', 'success');
     await renderAzureLicenses();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// 라이선스명 드롭다운(월 비용대장/API 키 관리/필터)에 등록된 라이선스 목록을 채운다
+function populateLicenseNameSelects() {
+  const names = [...new Set(allAzureLicenses.map(l => l.license_name).filter(Boolean))].sort();
+  ['aic_license_name', 'aik_license_name', 'aiCostFilterLicense'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const keep = el.value;
+    const placeholder = id === 'aiCostFilterLicense' ? '전체' : '선택하세요';
+    el.innerHTML = `<option value="">${placeholder}</option>` + names.map(n => `<option value="${n}">${n}</option>`).join('');
+    if (keep) el.value = keep;
+  });
+}
+
+// ============================================================
+// AI 라이선스 월 비용대장 (실제 매월 청구된 비용 - API 사용량 등으로 매월 달라질 수 있어 기록용)
+// ============================================================
+const AI_COST_TBL = 'ai_license_costs';
+let allAiLicenseCosts = [];
+let filteredAiLicenseCosts = [];
+
+async function loadAiLicenseCosts() {
+  try {
+    if (!allAzureLicenses.length) {
+      const licData = await azApiFetch(`${AZ_LIC_TBL}?limit=1000`);
+      allAzureLicenses = licData?.data || [];
+    }
+    populateLicenseNameSelects();
+
+    const from = document.getElementById('aiCostFilterFrom')?.value || '';
+    const to   = document.getElementById('aiCostFilterTo')?.value   || '';
+    const lic  = document.getElementById('aiCostFilterLicense')?.value || '';
+
+    const data = await azApiFetch(`${AI_COST_TBL}?limit=1000`);
+    allAiLicenseCosts = data?.data || [];
+
+    filteredAiLicenseCosts = allAiLicenseCosts.filter(c => {
+      const mFrom = !from || (c.period || '') >= from;
+      const mTo   = !to   || (c.period || '') <= to;
+      const mLic  = !lic  || c.license_name === lic;
+      return mFrom && mTo && mLic;
+    });
+
+    renderAiCostTable();
+  } catch (e) {
+    showToast('AI 라이선스 비용 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function resetAiCostFilter() {
+  ['aiCostFilterFrom', 'aiCostFilterTo', 'aiCostFilterLicense'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  loadAiLicenseCosts();
+}
+
+function renderAiCostTable() {
+  registerSortableTable('aicost', () => filteredAiLicenseCosts, (a) => { filteredAiLicenseCosts = a; }, renderAiCostTable);
+
+  const tbody = document.getElementById('aiCostTableBody');
+  if (!tbody) return;
+  setEl('aiCostCount', `전체 ${filteredAiLicenseCosts.length}건`);
+
+  // 요약 카드 (기간 필터와 무관하게 전체 기준 이번달/전월 비교)
+  const periods = [...new Set(allAiLicenseCosts.map(c => c.period).filter(Boolean))].sort();
+  const latest = periods[periods.length - 1];
+  const prev   = periods[periods.length - 2];
+  const sumFor = p => allAiLicenseCosts.filter(c => c.period === p)
+    .reduce((s, c) => s + (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0), 0);
+  const latestTotal = latest ? sumFor(latest) : 0;
+  const prevTotal   = prev ? sumFor(prev) : 0;
+  const mom = latestTotal - prevTotal;
+
+  setEl('aiCostStatTotal', '$' + latestTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
+  setEl('aiCostStatMom', periods.length >= 2 ? `${mom>0?'+':''}$${mom.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}` : '-');
+  setEl('aiCostStatCount', allAiLicenseCosts.length + '건');
+
+  if (!filteredAiLicenseCosts.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-gray-400"><i class="fas fa-file-invoice-dollar text-4xl block mb-3 opacity-20"></i>비용 데이터가 없습니다.</td></tr>`;
+    return;
+  }
+
+  const rows = [...filteredAiLicenseCosts].map(c => ({ ...c, total_usd: (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0) }));
+
+  tbody.innerHTML = rows.map(c => {
+    const periodFmt = (c.period || '-').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+    return `
+      <tr class="hover:bg-violet-50/30 border-b border-gray-50">
+        <td class="px-4 py-2.5 text-xs text-gray-600 font-semibold whitespace-nowrap">${periodFmt}</td>
+        <td class="px-4 py-2.5 font-medium text-gray-800 text-sm">${c.license_name || '-'}</td>
+        <td class="px-4 py-2.5 text-right text-sm text-gray-500">$${Number(c.seat_cost_usd||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="px-4 py-2.5 text-right text-sm text-gray-500">$${Number(c.additional_cost_usd||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="px-4 py-2.5 text-right text-sm font-bold text-violet-700">$${c.total_usd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="px-4 py-2.5 text-xs text-gray-400 max-w-28 truncate" title="${c.note||''}">${c.note || '-'}</td>
+        <td class="px-4 py-2.5 text-center">
+          <div class="flex gap-1 justify-center">
+            <button onclick="openAiCostModal('${c.id}')" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteAiLicenseCost('${c.id}','${(c.license_name||'').replace(/'/g,"\\'")}')"><span class="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 cursor-pointer"><i class="fas fa-trash"></i></span></button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function openAiCostModal(id) {
+  populateLicenseNameSelects();
+  const isEdit = !!id;
+  document.getElementById('aiCostModalTitle').innerHTML = `<i class="fas fa-file-invoice-dollar text-violet-500"></i>${isEdit ? 'AI 라이선스 비용 수정' : 'AI 라이선스 비용 등록'}`;
+  document.getElementById('aiCostEditId').value = id || '';
+
+  const fields = ['period', 'license_name', 'seat_cost_usd', 'additional_cost_usd', 'note'];
+  if (isEdit) {
+    const item = allAiLicenseCosts.find(c => c.id === id);
+    if (!item) return;
+    fields.forEach(f => { const el = document.getElementById(`aic_${f}`); if (el) el.value = item[f] ?? ''; });
+  } else {
+    fields.forEach(f => { const el = document.getElementById(`aic_${f}`); if (el) el.value = ''; });
+    const now = new Date();
+    document.getElementById('aic_period').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+  openModal('aiCostModal');
+}
+
+async function saveAiLicenseCost() {
+  if (!AuthManager.hasPermission('ai', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  const editId = document.getElementById('aiCostEditId')?.value;
+  const payload = {
+    period:              document.getElementById('aic_period')?.value,
+    license_name:        document.getElementById('aic_license_name')?.value,
+    seat_cost_usd:       Number(document.getElementById('aic_seat_cost_usd')?.value)       || 0,
+    additional_cost_usd: Number(document.getElementById('aic_additional_cost_usd')?.value) || 0,
+    note:                document.getElementById('aic_note')?.value?.trim(),
+  };
+  if (!payload.period)       { showToast('기간을 선택해주세요.', 'warning'); return; }
+  if (!payload.license_name) { showToast('라이선스를 선택해주세요.', 'warning'); return; }
+
+  try {
+    if (editId) {
+      await azApiFetch(`${AI_COST_TBL}/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      showToast('비용 정보가 수정되었습니다.', 'success');
+    } else {
+      await azApiFetch(AI_COST_TBL, { method: 'POST', body: JSON.stringify(payload) });
+      showToast('비용 데이터가 등록되었습니다.', 'success');
+    }
+    closeModal('aiCostModal');
+    await loadAiLicenseCosts();
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteAiLicenseCost(id, name) {
+  if (!confirm(`'${name}' 비용 데이터를 삭제하시겠습니까?`)) return;
+  try {
+    await azApiFetch(`${AI_COST_TBL}/${id}`, { method: 'DELETE' });
+    showToast('삭제되었습니다.', 'success');
+    await loadAiLicenseCosts();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+function exportAiCostExcel() {
+  if (!filteredAiLicenseCosts.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  const headers = ['기간', '라이선스', '시트비용(USD)', '추가사용료(USD)', '합계(USD)', '비고'];
+  const rows = filteredAiLicenseCosts.map(c => {
+    const period = (c.period || '').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+    const seat = Number(c.seat_cost_usd) || 0;
+    const extra = Number(c.additional_cost_usd) || 0;
+    return [period, c.license_name || '-', seat, extra, seat + extra, c.note || ''];
+  });
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'AI라이선스비용');
+    XLSX.writeFile(wb, `AI라이선스월비용_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else {
+    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
+  }
+}
+
+// ============================================================
+// AI 라이선스 API 키 관리 (라벨 전용 - 실제 키 값은 저장하지 않음)
+// ============================================================
+const AI_KEY_TBL = 'ai_license_keys';
+let allAiLicenseKeys = [];
+
+async function loadAiLicenseKeys() {
+  try {
+    if (!allAzureLicenses.length) {
+      const licData = await azApiFetch(`${AZ_LIC_TBL}?limit=1000`);
+      allAzureLicenses = licData?.data || [];
+    }
+    populateLicenseNameSelects();
+
+    const data = await azApiFetch(`${AI_KEY_TBL}?limit=1000`);
+    allAiLicenseKeys = data?.data || [];
+    renderAiKeyTable();
+  } catch (e) {
+    showToast('API 키 목록 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function renderAiKeyTable() {
+  registerSortableTable('aikey', () => allAiLicenseKeys, (a) => { allAiLicenseKeys = a; }, renderAiKeyTable);
+
+  const tbody = document.getElementById('aiKeyTableBody');
+  if (!tbody) return;
+  setEl('aiKeyCount', `전체 ${allAiLicenseKeys.length}건`);
+
+  if (!allAiLicenseKeys.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-gray-400"><i class="fas fa-key text-4xl block mb-3 opacity-20"></i>등록된 키가 없습니다.</td></tr>`;
+    return;
+  }
+
+  const statusBadge = { '활성': 'bg-green-100 text-green-700', '비활성': 'bg-gray-100 text-gray-500', '폐기': 'bg-red-100 text-red-600' };
+
+  tbody.innerHTML = allAiLicenseKeys.map(k => `
+    <tr class="hover:bg-amber-50/30 border-b border-gray-50">
+      <td class="px-4 py-2.5 font-medium text-gray-800 text-sm">${k.license_name || '-'}</td>
+      <td class="px-4 py-2.5 text-sm text-gray-700"><i class="fas fa-key text-amber-400 mr-1 text-xs"></i>${k.key_label || '-'}</td>
+      <td class="px-4 py-2.5 text-xs text-gray-500">${k.purpose || '-'}</td>
+      <td class="px-4 py-2.5 text-xs text-gray-500">${k.issued_date || '-'}</td>
+      <td class="px-4 py-2.5 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadge[k.status]||'bg-gray-100 text-gray-500'}">${k.status||'-'}</span></td>
+      <td class="px-4 py-2.5 text-xs text-gray-400 max-w-28 truncate" title="${k.note||''}">${k.note || '-'}</td>
+      <td class="px-4 py-2.5 text-center">
+        <div class="flex gap-1 justify-center">
+          <button onclick="openAiKeyModal('${k.id}')" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteAiLicenseKey('${k.id}','${(k.key_label||'').replace(/'/g,"\\'")}')"><span class="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 cursor-pointer"><i class="fas fa-trash"></i></span></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function openAiKeyModal(id) {
+  populateLicenseNameSelects();
+  const isEdit = !!id;
+  document.getElementById('aiKeyModalTitle').innerHTML = `<i class="fas fa-key text-amber-500"></i>${isEdit ? 'API 키 수정' : 'API 키 등록'}`;
+  document.getElementById('aiKeyEditId').value = id || '';
+
+  const fields = ['license_name', 'key_label', 'purpose', 'issued_date', 'status', 'note'];
+  if (isEdit) {
+    const item = allAiLicenseKeys.find(k => k.id === id);
+    if (!item) return;
+    fields.forEach(f => { const el = document.getElementById(`aik_${f}`); if (el) el.value = item[f] ?? ''; });
+  } else {
+    fields.forEach(f => { const el = document.getElementById(`aik_${f}`); if (el) el.value = ''; });
+    document.getElementById('aik_status').value = '활성';
+  }
+  openModal('aiKeyModal');
+}
+
+async function saveAiLicenseKey() {
+  if (!AuthManager.hasPermission('ai', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  const editId = document.getElementById('aiKeyEditId')?.value;
+  const payload = {
+    license_name: document.getElementById('aik_license_name')?.value,
+    key_label:    document.getElementById('aik_key_label')?.value?.trim(),
+    purpose:      document.getElementById('aik_purpose')?.value?.trim(),
+    issued_date:  document.getElementById('aik_issued_date')?.value,
+    status:       document.getElementById('aik_status')?.value || '활성',
+    note:         document.getElementById('aik_note')?.value?.trim(),
+  };
+  if (!payload.license_name) { showToast('라이선스를 선택해주세요.', 'warning'); return; }
+  if (!payload.key_label)    { showToast('키 라벨을 입력해주세요.', 'warning'); return; }
+
+  try {
+    if (editId) {
+      await azApiFetch(`${AI_KEY_TBL}/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      showToast('키 정보가 수정되었습니다.', 'success');
+    } else {
+      await azApiFetch(AI_KEY_TBL, { method: 'POST', body: JSON.stringify(payload) });
+      showToast('키가 등록되었습니다.', 'success');
+    }
+    closeModal('aiKeyModal');
+    await loadAiLicenseKeys();
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteAiLicenseKey(id, label) {
+  if (!confirm(`'${label}' 키 정보를 삭제하시겠습니까?`)) return;
+  try {
+    await azApiFetch(`${AI_KEY_TBL}/${id}`, { method: 'DELETE' });
+    showToast('삭제되었습니다.', 'success');
+    await loadAiLicenseKeys();
   } catch (e) {
     showToast('삭제 실패: ' + e.message, 'error');
   }

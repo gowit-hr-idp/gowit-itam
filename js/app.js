@@ -75,7 +75,7 @@ const PAGE_PERMISSION_GROUP = {
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
-  'ai-licenses': 'ai',
+  'ai-licenses': 'ai', 'ai-costs': 'ai', 'ai-keys': 'ai',
 };
 
 // 사이드바에서 열람 권한이 없는 메뉴 그룹을 숨긴다
@@ -192,7 +192,7 @@ const PAGE_GROUP_MAP = {
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
-  'ai-licenses': 'ai_license', 'ai-settings': 'ai_license',
+  'ai-licenses': 'ai_license', 'ai-costs': 'ai_license', 'ai-keys': 'ai_license', 'ai-settings': 'ai_license',
   'admin-users': 'admin', 'admin-categories': 'admin', 'admin-logs': 'admin',
 };
 
@@ -307,6 +307,8 @@ async function navigateTo(page) {
     'azure-resources': ['Azure 리소스 대장',   '홈 / Azure / 리소스 대장'],
     'azure-costs':     ['Azure 월별 비용대장', '홈 / Azure / 월별 비용대장'],
     'ai-licenses':     ['AI 라이선스 관리',    '홈 / AI 라이선스 / 라이선스 현황'],
+    'ai-costs':        ['AI 라이선스 월 비용대장', '홈 / AI 라이선스 / 월 비용대장'],
+    'ai-keys':         ['API 키 관리',         '홈 / AI 라이선스 / API 키 관리'],
     'assets-settings': ['고정자산 관리 설정',  '홈 / 고정자산 관리 / 설정'],
     'sub-settings':    ['IT정기결제 설정',     '홈 / IT 정기결제 / 설정'],
     'promo-settings':  ['판촉물 관리 설정',    '홈 / 판촉물 관리 / 설정'],
@@ -351,6 +353,8 @@ async function navigateTo(page) {
     case 'azure-resources': await renderAzureResources(); break;
     case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); break;
     case 'ai-licenses':     await renderAzureLicenses(); break;
+    case 'ai-costs':        await loadAiLicenseCosts(); break;
+    case 'ai-keys':         await loadAiLicenseKeys(); break;
     case 'admin-users':
       if (!AuthManager.isAdmin()) { showToast('관리자 권한이 필요합니다.', 'error'); navigateTo('dashboard'); return; }
       await loadAdminUsers(); break;
