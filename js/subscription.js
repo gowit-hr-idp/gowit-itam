@@ -462,11 +462,18 @@ async function saveSubscription() {
                   'payment_account','contract_start','contract_end','manager','department','status','note'];
 
   const payload = {};
+  const dateFields = ['contract_start', 'contract_end'];
   fields.forEach(f => {
     const el = document.getElementById(`sf_${f}`);
     if (!el) return;
     const numFields = ['unit_price','quantity','monthly_krw','annual_krw'];
-    payload[f] = numFields.includes(f) ? (Number(el.value) || 0) : el.value.trim();
+    if (numFields.includes(f)) {
+      payload[f] = Number(el.value) || 0;
+    } else if (dateFields.includes(f)) {
+      payload[f] = el.value.trim() || null;
+    } else {
+      payload[f] = el.value.trim();
+    }
   });
   payload.auto_renew = document.getElementById('sf_auto_renew').value === 'true';
 

@@ -290,8 +290,12 @@ async function renderAzureMainDashTab() {
 // ============================================================
 async function renderAiLicMainDashTab() {
   try {
-    const data = await azApiFetch(`${AZ_LIC_TBL}?limit=1000`);
+    const [data, costData] = await Promise.all([
+      azApiFetch(`${AZ_LIC_TBL}?limit=1000`),
+      azApiFetch(`${AI_COST_TBL}?limit=1000`),
+    ]);
     const licenses = data?.data || [];
+    const costs     = costData?.data || [];
 
     const totalSeats = licenses.reduce((s,l) => s + (Number(l.total_seats)||0), 0);
     const usedSeats  = licenses.reduce((s,l) => s + (Number(l.used_seats)||0), 0);
@@ -306,6 +310,19 @@ async function renderAiLicMainDashTab() {
     setEl('dashai-stat-seats',    `${usedSeats.toLocaleString()} / ${totalSeats.toLocaleString()}`);
     setEl('dashai-stat-cost',     '$' + monthlyCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
     setEl('dashai-stat-expiring', expiring.length);
+
+    // 전월 대비 (월 비용대장에 실제 청구 기록이 있는 경우에만 계산 가능)
+    const periods = [...new Set(costs.map(c => c.period).filter(Boolean))].sort();
+    if (periods.length >= 2) {
+      const latest = periods[periods.length - 1];
+      const prev   = periods[periods.length - 2];
+      const sumFor = p => costs.filter(c => c.period === p)
+        .reduce((s, c) => s + (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0), 0);
+      const mom = sumFor(latest) - sumFor(prev);
+      setEl('dashai-stat-mom', `전월 대비 ${mom>0?'+':''}$${mom.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`);
+    } else {
+      setEl('dashai-stat-mom', '전월 대비 데이터 없음 (월 비용대장 입력 필요)');
+    }
 
     const ctx = document.getElementById('dashAiLicTypeChart');
     if (ctx) {
@@ -527,8 +544,8 @@ async function saveAzureResource() {
     monthly_cost_krw: Number(document.getElementById('azr_monthly_cost_krw')?.value) || 0,
     owner:            document.getElementById('azr_owner')?.value?.trim(),
     department:       document.getElementById('azr_department')?.value?.trim(),
-    created_date:     document.getElementById('azr_created_date')?.value,
-    last_reviewed:    document.getElementById('azr_last_reviewed')?.value,
+    created_date:     document.getElementById('azr_created_date')?.value || null,
+    last_reviewed:    document.getElementById('azr_last_reviewed')?.value || null,
     purpose:          document.getElementById('azr_purpose')?.value?.trim(),
     tags:             document.getElementById('azr_tags')?.value?.trim(),
     note:             document.getElementById('azr_note')?.value?.trim(),
@@ -816,8 +833,8 @@ async function saveAzureLicense() {
     additional_cost_usd: Number(document.getElementById('azl_additional_cost_usd')?.value) || 0,
     billing_cycle:       document.getElementById('azl_billing_cycle')?.value || '월간',
     status:              document.getElementById('azl_status')?.value       || '활성',
-    contract_start:      document.getElementById('azl_contract_start')?.value,
-    contract_end:        document.getElementById('azl_contract_end')?.value,
+    contract_start:      document.getElementById('azl_contract_start')?.value || null,
+    contract_end:        document.getElementById('azl_contract_end')?.value || null,
     auto_renew:          document.getElementById('azl_auto_renew')?.value === 'true',
     owner:               document.getElementById('azl_owner')?.value?.trim(),
     department:          document.getElementById('azl_department')?.value?.trim(),
@@ -1123,7 +1140,7 @@ async function saveAiLicenseKey() {
     license_name: document.getElementById('aik_license_name')?.value,
     key_label:    document.getElementById('aik_key_label')?.value?.trim(),
     purpose:      document.getElementById('aik_purpose')?.value?.trim(),
-    issued_date:  document.getElementById('aik_issued_date')?.value,
+    issued_date:  document.getElementById('aik_issued_date')?.value || null,
     status:       document.getElementById('aik_status')?.value || '활성',
     note:         document.getElementById('aik_note')?.value?.trim(),
   };
