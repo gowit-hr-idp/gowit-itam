@@ -674,13 +674,13 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <tr>
-                <th class="px-4 py-3 text-left">사업부</th>
-                <th class="px-4 py-3 text-center">Standard 인원</th>
-                <th class="px-4 py-3 text-center">Premium 인원</th>
-                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
-                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
-                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
-                <th class="px-4 py-3 text-right">합계(USD)</th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-violet-600" data-field="key" onclick="sortAiSummary('dept','key')">사업부 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="std" onclick="sortAiSummary('dept','std')">Standard 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="prem" onclick="sortAiSummary('dept','prem')">Premium 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="stdCost" onclick="sortAiSummary('dept','stdCost')">Standard 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="premCost" onclick="sortAiSummary('dept','premCost')">Premium 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="extra" onclick="sortAiSummary('dept','extra')">추가크레딧(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="total" onclick="sortAiSummary('dept','total')">합계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
               </tr>
             </thead>
             <tbody id="aiDeptSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
@@ -698,13 +698,13 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <tr>
-                <th class="px-4 py-3 text-left">배포목적</th>
-                <th class="px-4 py-3 text-center">Standard 인원</th>
-                <th class="px-4 py-3 text-center">Premium 인원</th>
-                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
-                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
-                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
-                <th class="px-4 py-3 text-right">합계(USD)</th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-violet-600" data-field="key" onclick="sortAiSummary('purpose','key')">배포목적 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="std" onclick="sortAiSummary('purpose','std')">Standard 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="prem" onclick="sortAiSummary('purpose','prem')">Premium 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="stdCost" onclick="sortAiSummary('purpose','stdCost')">Standard 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="premCost" onclick="sortAiSummary('purpose','premCost')">Premium 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="extra" onclick="sortAiSummary('purpose','extra')">추가크레딧(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="total" onclick="sortAiSummary('purpose','total')">합계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
               </tr>
             </thead>
             <tbody id="aiPurposeSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
