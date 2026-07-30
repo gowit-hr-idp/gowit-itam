@@ -1443,6 +1443,128 @@ function exportAzureCostExcel() {
 // ============================================================
 // 월별 보고 피벗 – Excel 내보내기 (부사장 보고용, 원본 엑셀과 동일 레이아웃)
 // ============================================================
+// 월별 비용대장 - 보고용 인쇄 (부사장 보고 등에 사용할 수 있는 깔끔한 인쇄 화면)
+function printAzureCostReport() {
+  if (!filteredAzureCosts.length) {
+    showToast('인쇄할 데이터가 없습니다.', 'warning');
+    return;
+  }
+
+  const deptOrder = [];
+  const deptServices = {};
+  filteredAzureCosts.forEach(c => {
+    const dept = c.department || '기타';
+    const svc  = c.service_name || '기타';
+    if (!deptServices[dept]) { deptServices[dept] = []; deptOrder.push(dept); }
+    if (!deptServices[dept].includes(svc)) deptServices[dept].push(svc);
+  });
+  const columns = [];
+  deptOrder.forEach(dept => deptServices[dept].forEach(svc => columns.push({ dept, svc })));
+  const periods = [...new Set(filteredAzureCosts.map(c => c.period).filter(Boolean))].sort();
+
+  const matrix = {};
+  periods.forEach(p => { matrix[p] = {}; columns.forEach(col => matrix[p][`${col.dept}|${col.svc}`] = 0); });
+  filteredAzureCosts.forEach(c => {
+    const p = c.period; if (!p || !matrix[p]) return;
+    const key = `${c.department||'기타'}|${c.service_name||'기타'}`;
+    matrix[p][key] = (matrix[p][key] || 0) + (Number(c.actual_cost_krw) || 0);
+  });
+
+  const fmtWon = v => '₩' + Math.round(v).toLocaleString();
+  const periodFmt = p => p.replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+
+  // 헤더 (부서 colspan + 서비스명)
+  let deptHeaderCells = '';
+  deptOrder.forEach(dept => {
+    deptHeaderCells += `<th colspan="${deptServices[dept].length}">${dept}</th>`;
+  });
+  let svcHeaderCells = columns.map(col => `<th>${col.svc}</th>`).join('');
+
+  // 데이터 행
+  let bodyRows = '';
+  periods.forEach(p => {
+    let total = 0;
+    const cells = columns.map(col => {
+      const v = matrix[p][`${col.dept}|${col.svc}`] || 0;
+      total += v;
+      return `<td class="num">${v ? fmtWon(v) : '-'}</td>`;
+    }).join('');
+    bodyRows += `<tr><td class="period">${periodFmt(p)}</td>${cells}<td class="num total">${fmtWon(total)}</td></tr>`;
+  });
+
+  // 당월-전월 증감 행
+  let momRow = '';
+  if (periods.length >= 2) {
+    const last = periods[periods.length - 1];
+    const prev = periods[periods.length - 2];
+    let totalDiff = 0;
+    const diffCells = columns.map(col => {
+      const key = `${col.dept}|${col.svc}`;
+      const diff = (matrix[last][key] || 0) - (matrix[prev][key] || 0);
+      totalDiff += diff;
+      return `<td class="num">${diff ? (diff>0?'+':'') + fmtWon(diff) : '-'}</td>`;
+    }).join('');
+    momRow = `<tr class="mom-row"><td class="period">당월 - 전월</td>${diffCells}<td class="num total">${totalDiff>0?'+':''}${fmtWon(totalDiff)}</td></tr>`;
+  }
+
+  const fromEl = document.getElementById('azCostFilterFrom');
+  const toEl   = document.getElementById('azCostFilterTo');
+  const rangeText = (fromEl?.value || periods[0]) + ' ~ ' + (toEl?.value || periods[periods.length-1]);
+  const now = new Date();
+  const generatedText = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<title>Azure 월별 비용대장 보고</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; padding: 32px; color: #1f2937; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; }
+  thead th { background: #f3f4f6; font-weight: 700; }
+  td.period { text-align: left; font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; }
+  td.total { font-weight: 700; background: #eff6ff; }
+  tr.mom-row td { background: #fffbeb; font-weight: 700; }
+  .footer-note { margin-top: 16px; font-size: 11px; color: #9ca3af; }
+  @media print {
+    body { padding: 10mm; }
+    @page { size: landscape; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+  <h1>Azure 월별 비용 보고 (법인카드 결제 건)</h1>
+  <div class="meta">조회 기간: ${rangeText} &nbsp;|&nbsp; 출력일시: ${generatedText}</div>
+  <table>
+    <thead>
+      <tr><th rowspan="2">기간</th>${deptHeaderCells}<th rowspan="2">월계</th></tr>
+      <tr>${svcHeaderCells}</tr>
+    </thead>
+    <tbody>
+      ${bodyRows}
+      ${momRow}
+    </tbody>
+  </table>
+  <div class="footer-note">※ 본 보고서는 IT 통합 자산관리 시스템에서 자동 생성되었습니다.</div>
+  <script>window.onload = () => { window.print(); };</script>
+</body>
+</html>`;
+
+  const printWin = window.open('', '_blank');
+  if (!printWin) {
+    showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 팝업 차단을 해제해주세요.', 'error');
+    return;
+  }
+  printWin.document.write(html);
+  printWin.document.close();
+}
+
 function exportAzureCostPivotExcel() {
   if (!filteredAzureCosts.length) {
     showToast('내보낼 데이터가 없습니다.', 'warning');
