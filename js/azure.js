@@ -1391,106 +1391,176 @@ function exportAiSeatExcel() {
 // ============================================================
 // AI 라이선스 - 사업부별 비용집계 (배포 현황 기준 자동 집계)
 // ============================================================
+// 활성 시트를 임의의 키(사업부/배포목적 등)로 집계
+function aggregateAiSeats(active, keyFn) {
+  const groups = {}; // { key: { std, prem, stdCost, premCost, extra } }
+  active.forEach(s => {
+    const k = (keyFn(s) || '').toString().trim() || '기타';
+    if (!groups[k]) groups[k] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
+    const cost = Number(s.seat_cost_usd) || 0;
+    if (s.seat_type === 'Premium') { groups[k].prem += 1; groups[k].premCost += cost; }
+    else { groups[k].std += 1; groups[k].stdCost += cost; }
+    groups[k].extra += Number(s.extra_credit_usd) || 0;
+  });
+  return groups;
+}
+
+const _aiFmtUsd = v => '$' + (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// 집계 결과를 특정 tbody/tfoot에 렌더
+function renderAiSummaryTable(groups, bodyId, footId) {
+  const tbody = document.getElementById(bodyId);
+  const tfoot = document.getElementById(footId);
+  if (!tbody) return;
+
+  const keys = Object.keys(groups).sort((a,b) => {
+    const ta = groups[a].stdCost + groups[a].premCost + groups[a].extra;
+    const tb = groups[b].stdCost + groups[b].premCost + groups[b].extra;
+    return tb - ta;
+  });
+
+  let gStd=0, gPrem=0, gStdC=0, gPremC=0, gExtra=0;
+  tbody.innerHTML = keys.map(k => {
+    const g = groups[k];
+    const total = g.stdCost + g.premCost + g.extra;
+    gStd += g.std; gPrem += g.prem; gStdC += g.stdCost; gPremC += g.premCost; gExtra += g.extra;
+    return `
+      <tr class="border-b border-gray-50 hover:bg-violet-50/20">
+        <td class="px-4 py-2.5 font-medium text-gray-700">${k}</td>
+        <td class="px-4 py-2.5 text-center">${g.std}</td>
+        <td class="px-4 py-2.5 text-center">${g.prem}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.stdCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.premCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.extra)}</td>
+        <td class="px-4 py-2.5 text-right font-bold text-violet-700">${_aiFmtUsd(total)}</td>
+      </tr>`;
+  }).join('');
+
+  const grand = gStdC + gPremC + gExtra;
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr>
+        <td class="px-4 py-2.5">합계</td>
+        <td class="px-4 py-2.5 text-center">${gStd}</td>
+        <td class="px-4 py-2.5 text-center">${gPrem}</td>
+        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gStdC)}</td>
+        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gPremC)}</td>
+        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gExtra)}</td>
+        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(grand)}</td>
+      </tr>`;
+  }
+}
+
 async function renderAiDeptSummary() {
   try {
     if (!allAiLicenseSeats.length) {
       const data = await azApiFetch(`${AI_SEAT_TBL}?limit=2000`);
       allAiLicenseSeats = data?.data || [];
     }
-    const tbody = document.getElementById('aiDeptSummaryBody');
-    const tfoot = document.getElementById('aiDeptSummaryFoot');
-    if (!tbody) return;
-
     const active = allAiLicenseSeats.filter(s => s.status === '활성');
+
     if (!active.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
-      if (tfoot) tfoot.innerHTML = '';
+      const empty = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
+      ['aiDeptSummaryBody','aiPurposeSummaryBody'].forEach(id => { const b=document.getElementById(id); if(b) b.innerHTML = empty; });
+      ['aiDeptSummaryFoot','aiPurposeSummaryFoot'].forEach(id => { const f=document.getElementById(id); if(f) f.innerHTML = ''; });
       return;
     }
 
-    const groups = {}; // { dept: { std, prem, stdCost, premCost, extra } }
-    active.forEach(s => {
-      const dept = s.department || '기타';
-      if (!groups[dept]) groups[dept] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
-      const cost = Number(s.seat_cost_usd) || 0;
-      if (s.seat_type === 'Premium') { groups[dept].prem += 1; groups[dept].premCost += cost; }
-      else { groups[dept].std += 1; groups[dept].stdCost += cost; }
-      groups[dept].extra += Number(s.extra_credit_usd) || 0;
-    });
-
-    const depts = Object.keys(groups).sort((a,b) => {
-      const totalA = groups[a].stdCost + groups[a].premCost + groups[a].extra;
-      const totalB = groups[b].stdCost + groups[b].premCost + groups[b].extra;
-      return totalB - totalA;
-    });
-
-    let grandStd=0, grandPrem=0, grandStdCost=0, grandPremCost=0, grandExtra=0;
-    const fmt = v => '$' + v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-
-    tbody.innerHTML = depts.map(d => {
-      const g = groups[d];
-      const total = g.stdCost + g.premCost + g.extra;
-      grandStd += g.std; grandPrem += g.prem; grandStdCost += g.stdCost; grandPremCost += g.premCost; grandExtra += g.extra;
-      return `
-        <tr class="border-b border-gray-50 hover:bg-violet-50/20">
-          <td class="px-4 py-2.5 font-medium text-gray-700">${d}</td>
-          <td class="px-4 py-2.5 text-center">${g.std}</td>
-          <td class="px-4 py-2.5 text-center">${g.prem}</td>
-          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.stdCost)}</td>
-          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.premCost)}</td>
-          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.extra)}</td>
-          <td class="px-4 py-2.5 text-right font-bold text-violet-700">${fmt(total)}</td>
-        </tr>`;
-    }).join('');
-
-    const grandTotal = grandStdCost + grandPremCost + grandExtra;
-    if (tfoot) {
-      tfoot.innerHTML = `
-        <tr>
-          <td class="px-4 py-2.5">합계</td>
-          <td class="px-4 py-2.5 text-center">${grandStd}</td>
-          <td class="px-4 py-2.5 text-center">${grandPrem}</td>
-          <td class="px-4 py-2.5 text-right">${fmt(grandStdCost)}</td>
-          <td class="px-4 py-2.5 text-right">${fmt(grandPremCost)}</td>
-          <td class="px-4 py-2.5 text-right">${fmt(grandExtra)}</td>
-          <td class="px-4 py-2.5 text-right">${fmt(grandTotal)}</td>
-        </tr>`;
-    }
+    // 1) 사업부별  2) 배포목적별
+    renderAiSummaryTable(aggregateAiSeats(active, s => s.department), 'aiDeptSummaryBody', 'aiDeptSummaryFoot');
+    renderAiSummaryTable(aggregateAiSeats(active, s => s.purpose),    'aiPurposeSummaryBody', 'aiPurposeSummaryFoot');
   } catch (e) {
-    showToast('사업부별 집계 로드 실패: ' + e.message, 'error');
+    showToast('비용집계 로드 실패: ' + e.message, 'error');
   }
 }
 
 function exportAiDeptSummaryExcel() {
-  const tbody = document.getElementById('aiDeptSummaryBody');
-  if (!tbody || !tbody.querySelectorAll('tr').length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  const active = (allAiLicenseSeats || []).filter(s => s.status === '활성');
+  if (!active.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); return; }
 
-  const active = allAiLicenseSeats.filter(s => s.status === '활성');
-  const groups = {};
-  active.forEach(s => {
-    const dept = s.department || '기타';
-    if (!groups[dept]) groups[dept] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
-    const cost = Number(s.seat_cost_usd) || 0;
-    if (s.seat_type === 'Premium') { groups[dept].prem += 1; groups[dept].premCost += cost; }
-    else { groups[dept].std += 1; groups[dept].stdCost += cost; }
-    groups[dept].extra += Number(s.extra_credit_usd) || 0;
-  });
+  const headers = ['구분','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
+  const toRows = (groups) => Object.keys(groups)
+    .sort((a,b) => (groups[b].stdCost+groups[b].premCost+groups[b].extra) - (groups[a].stdCost+groups[a].premCost+groups[a].extra))
+    .map(k => { const g = groups[k]; return [k, g.std, g.prem, g.stdCost, g.premCost, g.extra, g.stdCost+g.premCost+g.extra]; });
 
-  const headers = ['사업부','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
-  const rows = Object.keys(groups).map(d => {
-    const g = groups[d];
-    return [d, g.std, g.prem, g.stdCost, g.premCost, g.extra, g.stdCost+g.premCost+g.extra];
-  });
+  const deptRows    = toRows(aggregateAiSeats(active, s => s.department));
+  const purposeRows = toRows(aggregateAiSeats(active, s => s.purpose));
 
-  if (typeof XLSX !== 'undefined') {
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '사업부별집계');
-    XLSX.writeFile(wb, `AI라이선스_사업부별집계_${Date.now()}.xlsx`);
-    showToast('Excel 파일이 다운로드되었습니다.', 'success');
-  } else {
-    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
-  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...deptRows]),    '사업부별집계');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...purposeRows]), '배포목적별집계');
+  XLSX.writeFile(wb, `AI라이선스_비용집계_${Date.now()}.xlsx`);
+  showToast('Excel 파일이 다운로드되었습니다.', 'success');
+}
+
+// 보고용 인쇄 (사업부별 + 배포목적별 한 페이지)
+function printAiDeptSummary() {
+  const active = (allAiLicenseSeats || []).filter(s => s.status === '활성');
+  if (!active.length) { showToast('인쇄할 데이터가 없습니다.', 'warning'); return; }
+
+  const monthEl = document.getElementById('aiDeptSummaryMonth');
+  const baseMonth = (monthEl && monthEl.value) ? monthEl.value : new Date().toISOString().slice(0,7);
+  const printedAt = new Date().toLocaleString('ko-KR');
+
+  const buildTable = (groups, labelHeader) => {
+    const keys = Object.keys(groups).sort((a,b) =>
+      (groups[b].stdCost+groups[b].premCost+groups[b].extra) - (groups[a].stdCost+groups[a].premCost+groups[a].extra));
+    let gStd=0, gPrem=0, gStdC=0, gPremC=0, gExtra=0;
+    const body = keys.map(k => {
+      const g = groups[k]; const t = g.stdCost+g.premCost+g.extra;
+      gStd+=g.std; gPrem+=g.prem; gStdC+=g.stdCost; gPremC+=g.premCost; gExtra+=g.extra;
+      return `<tr><td class="l">${k}</td><td class="c">${g.std}</td><td class="c">${g.prem}</td><td class="r">${_aiFmtUsd(g.stdCost)}</td><td class="r">${_aiFmtUsd(g.premCost)}</td><td class="r">${_aiFmtUsd(g.extra)}</td><td class="r b">${_aiFmtUsd(t)}</td></tr>`;
+    }).join('');
+    const grand = gStdC+gPremC+gExtra;
+    return `<table>
+      <thead><tr><th class="l">${labelHeader}</th><th>Standard 인원</th><th>Premium 인원</th><th>Standard 소계</th><th>Premium 소계</th><th>추가크레딧</th><th>합계(USD)</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><td class="l">합계</td><td class="c">${gStd}</td><td class="c">${gPrem}</td><td class="r">${_aiFmtUsd(gStdC)}</td><td class="r">${_aiFmtUsd(gPremC)}</td><td class="r">${_aiFmtUsd(gExtra)}</td><td class="r">${_aiFmtUsd(grand)}</td></tr></tfoot>
+    </table>`;
+  };
+
+  const deptTable    = buildTable(aggregateAiSeats(active, s => s.department), '사업부');
+  const purposeTable = buildTable(aggregateAiSeats(active, s => s.purpose),    '배포목적');
+  const totalSeats = active.length;
+  const totalCost = active.reduce((a,s) => a + (Number(s.seat_cost_usd)||0) + (Number(s.extra_credit_usd)||0), 0);
+
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>AI 라이선스 비용집계</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:-apple-system,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#1f2937;margin:32px;}
+    h1{font-size:20px;margin:0 0 4px;}
+    .meta{color:#6b7280;font-size:12px;margin-bottom:18px;}
+    .summary{display:flex;gap:32px;margin-bottom:22px;}
+    .summary div{font-size:12px;color:#6b7280;}
+    .summary b{display:block;font-size:18px;color:#6d28d9;margin-top:2px;}
+    h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #6d28d9;}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;}
+    th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:right;}
+    th{background:#f3f4f6;font-weight:600;text-align:center;}
+    th.l{text-align:left;} td.l{text-align:left;font-weight:500;} td.c{text-align:center;}
+    tfoot td{background:#f5f3ff;font-weight:700;}
+    td.b{font-weight:700;color:#6d28d9;}
+    @media print{body{margin:12mm;} button{display:none;}}
+  </style></head><body>
+    <h1>AI 라이선스 비용집계</h1>
+    <div class="meta">기준월 ${baseMonth} · 출력일시 ${printedAt} · GoWit 경영지원팀</div>
+    <div class="summary">
+      <div>총 활성 시트<b>${totalSeats}개</b></div>
+      <div>월 총비용<b>${_aiFmtUsd(totalCost)}</b></div>
+    </div>
+    <h2>1. 사업부별 시트 비용 집계</h2>
+    ${deptTable}
+    <h2>2. 배포목적별 시트 비용 집계</h2>
+    ${purposeTable}
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { showToast('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.', 'error'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 350);
 }
 
 // ============================================================

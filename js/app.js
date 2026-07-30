@@ -304,7 +304,7 @@ async function navigateTo(page) {
     'azure-dashboard': ['Azure 비용 대시보드', '홈 / Azure / 비용 대시보드'],
     'azure-costs':     ['Azure 월별 비용대장', '홈 / Azure / 월별 비용대장'],
     'ai-seats':        ['AI 라이선스 배포 현황', '홈 / AI 라이선스 / 배포 현황'],
-    'ai-dept-summary': ['AI 라이선스 사업부별 비용집계', '홈 / AI 라이선스 / 사업부별 비용집계'],
+    'ai-dept-summary': ['AI 라이선스 비용집계', '홈 / AI 라이선스 / 비용집계'],
     'ai-history':      ['AI 라이선스 갱신·회수 이력', '홈 / AI 라이선스 / 갱신·회수 이력'],
     'ai-licenses':     ['AI 라이선스 관리',    '홈 / AI 라이선스 / 라이선스 현황'],
     'ai-costs':        ['AI 라이선스 월 비용대장', '홈 / AI 라이선스 / 월 비용대장'],
