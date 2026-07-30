@@ -72,7 +72,7 @@ const PAGE_PERMISSION_GROUP = {
   repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
-  'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
+  'azure-dashboard': 'azure', 'azure-costs': 'azure',
   'ai-licenses': 'ai', 'ai-costs': 'ai', 'ai-keys': 'ai', 'ai-seats': 'ai', 'ai-dept-summary': 'ai', 'ai-history': 'ai',
 };
 
@@ -189,7 +189,7 @@ const PAGE_GROUP_MAP = {
   repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets', 'assets-settings': 'assets',
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
-  'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
+  'azure-dashboard': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
   'ai-licenses': 'ai_license', 'ai-costs': 'ai_license', 'ai-keys': 'ai_license', 'ai-settings': 'ai_license',
   'ai-seats': 'ai_license', 'ai-dept-summary': 'ai_license', 'ai-history': 'ai_license',
   'admin-users': 'admin', 'admin-categories': 'admin', 'admin-logs': 'admin',
@@ -302,7 +302,6 @@ async function navigateTo(page) {
     'promo-out':      ['판촉물 출고 처리', '홈 / 판촉물 / 출고 처리'],
     'promo-history':  ['판촉물 입출고 이력', '홈 / 판촉물 / 입출고 이력'],
     'azure-dashboard': ['Azure 비용 대시보드', '홈 / Azure / 비용 대시보드'],
-    'azure-resources': ['Azure 리소스 대장',   '홈 / Azure / 리소스 대장'],
     'azure-costs':     ['Azure 월별 비용대장', '홈 / Azure / 월별 비용대장'],
     'ai-seats':        ['AI 라이선스 배포 현황', '홈 / AI 라이선스 / 배포 현황'],
     'ai-dept-summary': ['AI 라이선스 사업부별 비용집계', '홈 / AI 라이선스 / 사업부별 비용집계'],
@@ -350,7 +349,6 @@ async function navigateTo(page) {
       await loadAllPromoItems(); populatePromoSelects(); initPromoInOutDefaults(); break;
     case 'promo-history':  loadPromoHistory(); break;
     case 'azure-dashboard': await renderAzureDashboard(); break;
-    case 'azure-resources': await renderAzureResources(); break;
     case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); break;
     case 'ai-seats':        await loadAiLicenseSeats(); break;
     case 'ai-dept-summary': await renderAiDeptSummary(); break;
@@ -1264,8 +1262,6 @@ const CATEGORY_DROPDOWN_MAP = [
   { selectId: 'f_asset_category',   group: 'assets'           },
   { selectId: 'sf_category',        group: 'sub'              },
   { selectId: 'pf_category',        group: 'promo'            },
-  { selectId: 'azr_service_group',  group: 'azure'            },
-  { selectId: 'azr_resource_type',  group: 'azure_restype'    },
   { selectId: 'azc_department',     group: 'azure_cost_dept'  },
   { selectId: 'azc_service_name',   group: 'azure_cost_service' },
   { selectId: 'azCostFilterDept',   group: 'azure_cost_dept'  },
