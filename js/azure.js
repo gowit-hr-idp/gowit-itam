@@ -173,7 +173,7 @@ function renderAzCostServiceMomTable() {
       <tr class="border-b border-gray-50">
         <td class="py-1.5 text-gray-700">${svc}</td>
         <td class="py-1.5 text-right font-semibold text-gray-800">₩${cur.toLocaleString()}</td>
-        <td class="py-1.5 text-right text-gray-400">${prev ? '₩'+pv.toLocaleString() : '-'}</td>
+        <td class="py-1.5 text-right text-gray-400">${hasPrev ? '₩'+pv.toLocaleString() : '-'}</td>
         <td class="py-1.5 text-right ${diffCls}">${diffTxt}</td>
       </tr>`;
   }).join('');
