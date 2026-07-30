@@ -1912,6 +1912,15 @@ function resetAzureCostFilter() {
   loadAzureCosts();
 }
 
+// 개별 입력 항목 목록 접기/펼치기
+function toggleAzCostList() {
+  const wrap = document.getElementById('azCostListWrap');
+  const caret = document.getElementById('azCostListCaret');
+  if (!wrap) return;
+  const collapsed = wrap.classList.toggle('hidden');
+  if (caret) caret.className = `fas ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-xs text-blue-500 transition-transform`;
+}
+
 function renderAzureCostTable() {
   registerSortableTable('azcost', () => filteredAzureCosts, (a) => { filteredAzureCosts = a; }, renderAzureCostTable);
   const tbody = document.getElementById('azCostTableBody');
