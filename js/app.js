@@ -73,7 +73,7 @@ const PAGE_PERMISSION_GROUP = {
   'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure',
-  'ai-licenses': 'ai', 'ai-costs': 'ai', 'ai-keys': 'ai',
+  'ai-licenses': 'ai', 'ai-costs': 'ai', 'ai-keys': 'ai', 'ai-seats': 'ai', 'ai-dept-summary': 'ai', 'ai-history': 'ai',
 };
 
 // 사이드바에서 열람 권한이 없는 메뉴 그룹을 숨긴다
@@ -191,6 +191,7 @@ const PAGE_GROUP_MAP = {
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
   'azure-dashboard': 'azure', 'azure-resources': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
   'ai-licenses': 'ai_license', 'ai-costs': 'ai_license', 'ai-keys': 'ai_license', 'ai-settings': 'ai_license',
+  'ai-seats': 'ai_license', 'ai-dept-summary': 'ai_license', 'ai-history': 'ai_license',
   'admin-users': 'admin', 'admin-categories': 'admin', 'admin-logs': 'admin',
 };
 
@@ -303,6 +304,9 @@ async function navigateTo(page) {
     'azure-dashboard': ['Azure 비용 대시보드', '홈 / Azure / 비용 대시보드'],
     'azure-resources': ['Azure 리소스 대장',   '홈 / Azure / 리소스 대장'],
     'azure-costs':     ['Azure 월별 비용대장', '홈 / Azure / 월별 비용대장'],
+    'ai-seats':        ['AI 라이선스 배포 현황', '홈 / AI 라이선스 / 배포 현황'],
+    'ai-dept-summary': ['AI 라이선스 사업부별 비용집계', '홈 / AI 라이선스 / 사업부별 비용집계'],
+    'ai-history':      ['AI 라이선스 갱신·회수 이력', '홈 / AI 라이선스 / 갱신·회수 이력'],
     'ai-licenses':     ['AI 라이선스 관리',    '홈 / AI 라이선스 / 라이선스 현황'],
     'ai-costs':        ['AI 라이선스 월 비용대장', '홈 / AI 라이선스 / 월 비용대장'],
     'ai-keys':         ['API 키 관리',         '홈 / AI 라이선스 / API 키 관리'],
@@ -348,6 +352,9 @@ async function navigateTo(page) {
     case 'azure-dashboard': await renderAzureDashboard(); break;
     case 'azure-resources': await renderAzureResources(); break;
     case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); break;
+    case 'ai-seats':        await loadAiLicenseSeats(); break;
+    case 'ai-dept-summary': await renderAiDeptSummary(); break;
+    case 'ai-history':      await loadAiLicenseHistory(); break;
     case 'ai-licenses':     await renderAzureLicenses(); break;
     case 'ai-costs':        await loadAiLicenseCosts(); break;
     case 'ai-keys':         await loadAiLicenseKeys(); break;

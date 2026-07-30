@@ -877,7 +877,7 @@ async function deleteAzureLicense(id, name) {
 // 라이선스명 드롭다운(월 비용대장/API 키 관리/필터)에 등록된 라이선스 목록을 채운다
 function populateLicenseNameSelects() {
   const names = [...new Set(allAzureLicenses.map(l => l.license_name).filter(Boolean))].sort();
-  ['aic_license_name', 'aik_license_name', 'aiCostFilterLicense'].forEach(id => {
+  ['aic_license_name', 'aik_license_name', 'aiCostFilterLicense', 'ais_license_name'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const keep = el.value;
@@ -1168,6 +1168,449 @@ async function deleteAiLicenseKey(id, label) {
     await azApiFetch(`${AI_KEY_TBL}/${id}`, { method: 'DELETE' });
     showToast('삭제되었습니다.', 'success');
     await loadAiLicenseKeys();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// AI 라이선스 - 배포 현황 (개인별 시트 배포 관리대장)
+// ============================================================
+const AI_SEAT_TBL = 'ai_license_seats';
+let allAiLicenseSeats = [];
+let filteredAiLicenseSeats = [];
+
+function seatMonthlyTotal(s) {
+  return (Number(s.seat_cost_usd) || 0) + (Number(s.extra_credit_usd) || 0);
+}
+
+async function loadAiLicenseSeats() {
+  try {
+    if (!allAzureLicenses.length) {
+      const licData = await azApiFetch(`${AZ_LIC_TBL}?limit=1000`);
+      allAzureLicenses = licData?.data || [];
+    }
+    populateLicenseNameSelects();
+    const licSel = document.getElementById('ais_license_name');
+    if (licSel && !licSel.options.length) { /* populated by populateLicenseNameSelects via shared ids only; ensure this one too */ }
+
+    const data = await azApiFetch(`${AI_SEAT_TBL}?limit=2000`);
+    allAiLicenseSeats = data?.data || [];
+
+    // 사업부 필터 옵션 채우기
+    const depts = [...new Set(allAiLicenseSeats.map(s => s.department).filter(Boolean))].sort();
+    const deptSel = document.getElementById('aiSeatFilterDept');
+    if (deptSel) {
+      const keep = deptSel.value;
+      deptSel.innerHTML = '<option value="">전체</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+      if (keep) deptSel.value = keep;
+    }
+
+    applyAiSeatFilter();
+  } catch (e) {
+    showToast('배포 현황 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function applyAiSeatFilter() {
+  const kw   = document.getElementById('aiSeatSearchInput')?.value?.trim().toLowerCase() || '';
+  const dept = document.getElementById('aiSeatFilterDept')?.value || '';
+  const type = document.getElementById('aiSeatFilterType')?.value || '';
+  const status = document.getElementById('aiSeatFilterStatus')?.value || '';
+
+  filteredAiLicenseSeats = allAiLicenseSeats.filter(s => {
+    const mKw = !kw || [s.name, s.email, s.purpose].some(v => (v||'').toLowerCase().includes(kw));
+    const mDept = !dept || s.department === dept;
+    const mType = !type || s.seat_type === type;
+    const mStatus = !status || s.status === status;
+    return mKw && mDept && mType && mStatus;
+  });
+  renderAiSeatTable();
+}
+
+function resetAiSeatFilter() {
+  ['aiSeatSearchInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['aiSeatFilterDept','aiSeatFilterType','aiSeatFilterStatus'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  applyAiSeatFilter();
+}
+
+function renderAiSeatTable() {
+  registerSortableTable('aiseat', () => filteredAiLicenseSeats, (a) => { filteredAiLicenseSeats = a; }, renderAiSeatTable);
+
+  const tbody = document.getElementById('aiSeatTableBody');
+  if (!tbody) return;
+  setEl('aiSeatCount', `전체 ${filteredAiLicenseSeats.length}건`);
+
+  // 요약 카드 (전체 기준, 필터 무관)
+  const active = allAiLicenseSeats.filter(s => s.status === '활성');
+  const stdCount = active.filter(s => s.seat_type === 'Standard').length;
+  const premCount = active.filter(s => s.seat_type === 'Premium').length;
+  const totalCost = active.reduce((sum, s) => sum + seatMonthlyTotal(s), 0);
+  const expiring = active.filter(s => s.expire_date && Math.ceil((new Date(s.expire_date) - new Date())/86400000) <= 30 && Math.ceil((new Date(s.expire_date) - new Date())/86400000) >= 0);
+
+  setEl('aiSeatStatTotal', active.length);
+  setEl('aiSeatStatTypes', `${stdCount} / ${premCount}`);
+  setEl('aiSeatStatCost', '$' + totalCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
+  setEl('aiSeatStatExpiring', expiring.length);
+
+  if (!filteredAiLicenseSeats.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-16 text-gray-400"><i class="fas fa-user-tag text-4xl block mb-3 opacity-20"></i>배포된 시트가 없습니다.</td></tr>`;
+    return;
+  }
+
+  const statusBadge = { '활성':'bg-green-100 text-green-700', '만료':'bg-red-100 text-red-600', '회수':'bg-gray-100 text-gray-500' };
+
+  tbody.innerHTML = filteredAiLicenseSeats.map(s => {
+    const total = seatMonthlyTotal(s);
+    let expBadge = '';
+    if (s.expire_date && s.status === '활성') {
+      const d = Math.ceil((new Date(s.expire_date) - new Date())/86400000);
+      if (d <= 0) expBadge = ' <span class="text-red-500 text-xs font-bold">(만료)</span>';
+      else if (d <= 30) expBadge = ` <span class="text-orange-500 text-xs font-bold">(D-${d})</span>`;
+    }
+    return `
+      <tr class="hover:bg-violet-50/30 border-b border-gray-50">
+        <td class="px-3 py-2 text-sm">${s.department||'-'}</td>
+        <td class="px-3 py-2 text-sm font-medium text-gray-800">${s.name||'-'}</td>
+        <td class="px-3 py-2 text-xs text-gray-500">${s.title||'-'}</td>
+        <td class="px-3 py-2 text-xs text-gray-500">${s.email||'-'}</td>
+        <td class="px-3 py-2 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${s.seat_type==='Premium'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">${s.seat_type||'-'}</span></td>
+        <td class="px-3 py-2 text-xs text-gray-500">${s.assign_type||'-'}</td>
+        <td class="px-3 py-2 text-xs text-gray-500 max-w-32 truncate" title="${s.purpose||''}">${s.purpose||'-'}</td>
+        <td class="px-3 py-2 text-xs text-gray-600">${s.expire_date||'-'}${expBadge}</td>
+        <td class="px-3 py-2 text-center text-xs text-gray-500">${s.renewal_count||0}</td>
+        <td class="px-3 py-2 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadge[s.status]||'bg-gray-100 text-gray-500'}">${s.status||'-'}</span></td>
+        <td class="px-3 py-2 text-right text-sm font-semibold text-violet-700">$${total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="px-3 py-2 text-center">
+          <div class="flex gap-1 justify-center">
+            <button onclick="openAiSeatModal('${s.id}')" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteAiLicenseSeat('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')"><span class="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 cursor-pointer"><i class="fas fa-trash"></i></span></button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function openAiSeatModal(id) {
+  populateLicenseNameSelects();
+  const isEdit = !!id;
+  document.getElementById('aiSeatModalTitle').innerHTML = `<i class="fas fa-user-tag text-violet-500"></i>${isEdit ? '시트 배포 수정' : '시트 배포 등록'}`;
+  document.getElementById('aiSeatEditId').value = id || '';
+
+  const fields = ['license_name','department','name','title','email','seat_type','assign_type','purpose',
+    'assigned_date','expire_date','renewal_count','status','seat_cost_usd','extra_credit_usd','note'];
+
+  if (isEdit) {
+    const item = allAiLicenseSeats.find(s => s.id === id);
+    if (!item) return;
+    fields.forEach(f => { const el = document.getElementById(`ais_${f}`); if (el) el.value = item[f] ?? ''; });
+  } else {
+    fields.forEach(f => { const el = document.getElementById(`ais_${f}`); if (el) el.value = ''; });
+    document.getElementById('ais_seat_type').value = 'Standard';
+    document.getElementById('ais_status').value = '활성';
+    document.getElementById('ais_renewal_count').value = 0;
+    const now = new Date();
+    document.getElementById('ais_assigned_date').value = now.toISOString().split('T')[0];
+  }
+  openModal('aiSeatModal');
+}
+
+async function saveAiLicenseSeat() {
+  if (!AuthManager.hasPermission('ai', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  const editId = document.getElementById('aiSeatEditId')?.value;
+  const payload = {
+    license_name:        document.getElementById('ais_license_name')?.value,
+    department:          document.getElementById('ais_department')?.value?.trim(),
+    name:                document.getElementById('ais_name')?.value?.trim(),
+    title:               document.getElementById('ais_title')?.value?.trim(),
+    email:               document.getElementById('ais_email')?.value?.trim(),
+    seat_type:           document.getElementById('ais_seat_type')?.value,
+    assign_type:         document.getElementById('ais_assign_type')?.value,
+    purpose:             document.getElementById('ais_purpose')?.value?.trim(),
+    assigned_date:       document.getElementById('ais_assigned_date')?.value || null,
+    expire_date:         document.getElementById('ais_expire_date')?.value || null,
+    renewal_count:       Number(document.getElementById('ais_renewal_count')?.value) || 0,
+    status:              document.getElementById('ais_status')?.value || '활성',
+    seat_cost_usd:       Number(document.getElementById('ais_seat_cost_usd')?.value) || 0,
+    extra_credit_usd:    Number(document.getElementById('ais_extra_credit_usd')?.value) || 0,
+    note:                document.getElementById('ais_note')?.value?.trim(),
+    updated_by:          (AuthManager.getCurrentUser()?.full_name) || '',
+    updated_at:          Date.now(),
+  };
+  if (!payload.department) { showToast('사업부를 입력해주세요.', 'warning'); return; }
+  if (!payload.name)       { showToast('성명을 입력해주세요.', 'warning'); return; }
+
+  try {
+    if (editId) {
+      await azApiFetch(`${AI_SEAT_TBL}/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      showToast('배포 정보가 수정되었습니다.', 'success');
+    } else {
+      await azApiFetch(AI_SEAT_TBL, { method: 'POST', body: JSON.stringify(payload) });
+      showToast('시트 배포가 등록되었습니다.', 'success');
+    }
+    closeModal('aiSeatModal');
+    await loadAiLicenseSeats();
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteAiLicenseSeat(id, name) {
+  if (!confirm(`'${name}' 시트 배포 정보를 삭제하시겠습니까?`)) return;
+  try {
+    await azApiFetch(`${AI_SEAT_TBL}/${id}`, { method: 'DELETE' });
+    showToast('삭제되었습니다.', 'success');
+    await loadAiLicenseSeats();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+function exportAiSeatExcel() {
+  if (!filteredAiLicenseSeats.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  const headers = ['사업부','성명','직급','이메일','시트유형','배포구분','배포목적','배포일','만료예정일','갱신횟수','상태','월시트비용(USD)','추가크레딧(USD)','월합계(USD)','비고'];
+  const rows = filteredAiLicenseSeats.map(s => [
+    s.department||'', s.name||'', s.title||'', s.email||'', s.seat_type||'', s.assign_type||'', s.purpose||'',
+    s.assigned_date||'', s.expire_date||'', s.renewal_count||0, s.status||'',
+    Number(s.seat_cost_usd)||0, Number(s.extra_credit_usd)||0, seatMonthlyTotal(s), s.note||'',
+  ]);
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '배포현황');
+    XLSX.writeFile(wb, `AI라이선스배포현황_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else {
+    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
+  }
+}
+
+// ============================================================
+// AI 라이선스 - 사업부별 비용집계 (배포 현황 기준 자동 집계)
+// ============================================================
+async function renderAiDeptSummary() {
+  try {
+    if (!allAiLicenseSeats.length) {
+      const data = await azApiFetch(`${AI_SEAT_TBL}?limit=2000`);
+      allAiLicenseSeats = data?.data || [];
+    }
+    const tbody = document.getElementById('aiDeptSummaryBody');
+    const tfoot = document.getElementById('aiDeptSummaryFoot');
+    if (!tbody) return;
+
+    const active = allAiLicenseSeats.filter(s => s.status === '활성');
+    if (!active.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
+      if (tfoot) tfoot.innerHTML = '';
+      return;
+    }
+
+    const groups = {}; // { dept: { std, prem, stdCost, premCost, extra } }
+    active.forEach(s => {
+      const dept = s.department || '기타';
+      if (!groups[dept]) groups[dept] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
+      const cost = Number(s.seat_cost_usd) || 0;
+      if (s.seat_type === 'Premium') { groups[dept].prem += 1; groups[dept].premCost += cost; }
+      else { groups[dept].std += 1; groups[dept].stdCost += cost; }
+      groups[dept].extra += Number(s.extra_credit_usd) || 0;
+    });
+
+    const depts = Object.keys(groups).sort((a,b) => {
+      const totalA = groups[a].stdCost + groups[a].premCost + groups[a].extra;
+      const totalB = groups[b].stdCost + groups[b].premCost + groups[b].extra;
+      return totalB - totalA;
+    });
+
+    let grandStd=0, grandPrem=0, grandStdCost=0, grandPremCost=0, grandExtra=0;
+    const fmt = v => '$' + v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    tbody.innerHTML = depts.map(d => {
+      const g = groups[d];
+      const total = g.stdCost + g.premCost + g.extra;
+      grandStd += g.std; grandPrem += g.prem; grandStdCost += g.stdCost; grandPremCost += g.premCost; grandExtra += g.extra;
+      return `
+        <tr class="border-b border-gray-50 hover:bg-violet-50/20">
+          <td class="px-4 py-2.5 font-medium text-gray-700">${d}</td>
+          <td class="px-4 py-2.5 text-center">${g.std}</td>
+          <td class="px-4 py-2.5 text-center">${g.prem}</td>
+          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.stdCost)}</td>
+          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.premCost)}</td>
+          <td class="px-4 py-2.5 text-right text-gray-600">${fmt(g.extra)}</td>
+          <td class="px-4 py-2.5 text-right font-bold text-violet-700">${fmt(total)}</td>
+        </tr>`;
+    }).join('');
+
+    const grandTotal = grandStdCost + grandPremCost + grandExtra;
+    if (tfoot) {
+      tfoot.innerHTML = `
+        <tr>
+          <td class="px-4 py-2.5">합계</td>
+          <td class="px-4 py-2.5 text-center">${grandStd}</td>
+          <td class="px-4 py-2.5 text-center">${grandPrem}</td>
+          <td class="px-4 py-2.5 text-right">${fmt(grandStdCost)}</td>
+          <td class="px-4 py-2.5 text-right">${fmt(grandPremCost)}</td>
+          <td class="px-4 py-2.5 text-right">${fmt(grandExtra)}</td>
+          <td class="px-4 py-2.5 text-right">${fmt(grandTotal)}</td>
+        </tr>`;
+    }
+  } catch (e) {
+    showToast('사업부별 집계 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function exportAiDeptSummaryExcel() {
+  const tbody = document.getElementById('aiDeptSummaryBody');
+  if (!tbody || !tbody.querySelectorAll('tr').length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+
+  const active = allAiLicenseSeats.filter(s => s.status === '활성');
+  const groups = {};
+  active.forEach(s => {
+    const dept = s.department || '기타';
+    if (!groups[dept]) groups[dept] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
+    const cost = Number(s.seat_cost_usd) || 0;
+    if (s.seat_type === 'Premium') { groups[dept].prem += 1; groups[dept].premCost += cost; }
+    else { groups[dept].std += 1; groups[dept].stdCost += cost; }
+    groups[dept].extra += Number(s.extra_credit_usd) || 0;
+  });
+
+  const headers = ['사업부','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
+  const rows = Object.keys(groups).map(d => {
+    const g = groups[d];
+    return [d, g.std, g.prem, g.stdCost, g.premCost, g.extra, g.stdCost+g.premCost+g.extra];
+  });
+
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '사업부별집계');
+    XLSX.writeFile(wb, `AI라이선스_사업부별집계_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else {
+    showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
+  }
+}
+
+// ============================================================
+// AI 라이선스 - 갱신·회수 이력
+// ============================================================
+const AI_HISTORY_TBL = 'ai_license_history';
+let allAiLicenseHistory = [];
+
+async function loadAiLicenseHistory() {
+  try {
+    const data = await azApiFetch(`${AI_HISTORY_TBL}?limit=2000`);
+    allAiLicenseHistory = data?.data || [];
+    renderAiHistoryTable();
+  } catch (e) {
+    showToast('이력 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function renderAiHistoryTable() {
+  registerSortableTable('aihistory', () => allAiLicenseHistory, (a) => { allAiLicenseHistory = a; }, renderAiHistoryTable);
+
+  const tbody = document.getElementById('aiHistoryTableBody');
+  if (!tbody) return;
+  setEl('aiHistoryCount', `전체 ${allAiLicenseHistory.length}건`);
+
+  if (!allAiLicenseHistory.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-16 text-gray-400"><i class="fas fa-history text-4xl block mb-3 opacity-20"></i>이력이 없습니다.</td></tr>`;
+    return;
+  }
+
+  const sorted = [...allAiLicenseHistory].sort((a,b) => (b.process_date||'').localeCompare(a.process_date||''));
+  const typeBadge = { '신규배포':'bg-green-100 text-green-700', '갱신':'bg-blue-100 text-blue-700', '회수':'bg-red-100 text-red-600', '변경':'bg-yellow-100 text-yellow-700' };
+
+  tbody.innerHTML = sorted.map(h => {
+    const cost = Number(h.cost_change_usd) || 0;
+    const costCls = cost > 0 ? 'text-red-600' : cost < 0 ? 'text-blue-600' : 'text-gray-400';
+    return `
+      <tr class="hover:bg-violet-50/30 border-b border-gray-50">
+        <td class="px-4 py-2.5 text-xs text-gray-600">${h.process_date||'-'}</td>
+        <td class="px-4 py-2.5 text-sm font-medium text-gray-800">${h.name||'-'}</td>
+        <td class="px-4 py-2.5 text-xs text-gray-500">${h.department||'-'}</td>
+        <td class="px-4 py-2.5 text-center text-xs text-gray-500">${h.seat_type||'-'}</td>
+        <td class="px-4 py-2.5 text-center"><span class="text-xs px-2 py-0.5 rounded-full font-semibold ${typeBadge[h.process_type]||'bg-gray-100 text-gray-500'}">${h.process_type||'-'}</span></td>
+        <td class="px-4 py-2.5 text-xs text-gray-500 max-w-28 truncate" title="${h.reason||''}">${h.reason||'-'}</td>
+        <td class="px-4 py-2.5 text-center text-xs text-gray-500">${h.status_before||'-'} → ${h.status_after||'-'}</td>
+        <td class="px-4 py-2.5 text-right text-sm font-semibold ${costCls}">${cost ? (cost>0?'+':'')+'$'+cost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '-'}</td>
+        <td class="px-4 py-2.5 text-xs text-gray-500">${h.handler||'-'}</td>
+        <td class="px-4 py-2.5 text-center">
+          <div class="flex gap-1 justify-center">
+            <button onclick="openAiHistoryModal('${h.id}')" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteAiLicenseHistory('${h.id}','${(h.name||'').replace(/'/g,"\\'")}')"><span class="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 cursor-pointer"><i class="fas fa-trash"></i></span></button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function openAiHistoryModal(id) {
+  const isEdit = !!id;
+  document.getElementById('aiHistoryModalTitle').innerHTML = `<i class="fas fa-history text-violet-500"></i>${isEdit ? '이력 수정' : '이력 등록'}`;
+  document.getElementById('aiHistoryEditId').value = id || '';
+
+  const fields = ['process_date','name','department','seat_type','process_type','cost_change_usd','status_before','status_after','reason','handler','note'];
+  if (isEdit) {
+    const item = allAiLicenseHistory.find(h => h.id === id);
+    if (!item) return;
+    fields.forEach(f => { const el = document.getElementById(`aih_${f}`); if (el) el.value = item[f] ?? ''; });
+  } else {
+    fields.forEach(f => { const el = document.getElementById(`aih_${f}`); if (el) el.value = ''; });
+    document.getElementById('aih_process_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('aih_process_type').value = '신규배포';
+    document.getElementById('aih_handler').value = (AuthManager.getCurrentUser()?.full_name) || '';
+  }
+  openModal('aiHistoryModal');
+}
+
+async function saveAiLicenseHistory() {
+  if (!AuthManager.hasPermission('ai', 'write')) {
+    showToast('입력/수정 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  const editId = document.getElementById('aiHistoryEditId')?.value;
+  const payload = {
+    process_date:     document.getElementById('aih_process_date')?.value || null,
+    name:             document.getElementById('aih_name')?.value?.trim(),
+    department:       document.getElementById('aih_department')?.value?.trim(),
+    seat_type:        document.getElementById('aih_seat_type')?.value || null,
+    process_type:     document.getElementById('aih_process_type')?.value,
+    cost_change_usd:  Number(document.getElementById('aih_cost_change_usd')?.value) || 0,
+    status_before:    document.getElementById('aih_status_before')?.value?.trim(),
+    status_after:     document.getElementById('aih_status_after')?.value?.trim(),
+    reason:           document.getElementById('aih_reason')?.value?.trim(),
+    handler:          document.getElementById('aih_handler')?.value?.trim(),
+    note:             document.getElementById('aih_note')?.value?.trim(),
+    created_at:       Date.now(),
+  };
+  if (!payload.process_date) { showToast('처리일을 입력해주세요.', 'warning'); return; }
+  if (!payload.name)         { showToast('성명을 입력해주세요.', 'warning'); return; }
+
+  try {
+    if (editId) {
+      await azApiFetch(`${AI_HISTORY_TBL}/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      showToast('이력이 수정되었습니다.', 'success');
+    } else {
+      await azApiFetch(AI_HISTORY_TBL, { method: 'POST', body: JSON.stringify(payload) });
+      showToast('이력이 등록되었습니다.', 'success');
+    }
+    closeModal('aiHistoryModal');
+    await loadAiLicenseHistory();
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteAiLicenseHistory(id, name) {
+  if (!confirm(`'${name}' 이력을 삭제하시겠습니까?`)) return;
+  try {
+    await azApiFetch(`${AI_HISTORY_TBL}/${id}`, { method: 'DELETE' });
+    showToast('삭제되었습니다.', 'success');
+    await loadAiLicenseHistory();
   } catch (e) {
     showToast('삭제 실패: ' + e.message, 'error');
   }
