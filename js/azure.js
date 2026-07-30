@@ -59,12 +59,20 @@ async function renderAzureDashboard() {
     const latestCostKrw = latestPeriod ? allAzureCosts.filter(c => c.period === latestPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const prevCostKrw   = prevPeriod   ? allAzureCosts.filter(c => c.period === prevPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const momDiff       = latestCostKrw - prevCostKrw;
-    const runningCount  = allAzureResources.filter(r => r.status === 'Running').length;
+
+    // 업로드된 리소스 비용 명세 연동 (최근/직전 기준월)
+    const aruPeriods = await _aruDistinctPeriods();
+    dashAruLatestPeriod = aruPeriods[aruPeriods.length - 1] || null;
+    dashAruPrevPeriod   = aruPeriods[aruPeriods.length - 2] || null;
+    dashAruLatest = dashAruLatestPeriod ? await _aruFetchByPeriod(dashAruLatestPeriod) : [];
+    dashAruPrev   = dashAruPrevPeriod   ? await _aruFetchByPeriod(dashAruPrevPeriod)   : [];
+    const aruSvcCount = new Set(dashAruLatest.map(r => r.service_name || '기타')).size;
+    const aruCostTotal = dashAruLatest.reduce((s, r) => s + (Number(r.cost_krw) || 0), 0);
 
     setEl('az-stat-total-cost',   '₩' + totalCostKrw.toLocaleString());
     setEl('az-stat-total-period', latestPeriod ? `최근월(${latestPeriod}) ₩${latestCostKrw.toLocaleString()}` : '데이터 없음');
-    setEl('az-stat-resources',    allAzureResources.length);
-    setEl('az-stat-resources-running', `Running ${runningCount}개`);
+    setEl('az-stat-resources',    dashAruLatest.length);
+    setEl('az-stat-resources-running', dashAruLatestPeriod ? `${dashAruLatestPeriod} · ${aruSvcCount}개 서비스 · ₩${Math.round(aruCostTotal).toLocaleString()}` : '업로드 데이터 없음');
 
     if (periods.length >= 2) {
       const sign = momDiff > 0 ? '+' : '';
@@ -78,7 +86,7 @@ async function renderAzureDashboard() {
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
     renderAzCostServiceMomTable();
-    renderAzResourceGroupSummary();
+    renderAruCategorySummary();
 
     // ── 최근 비용 내역 ──
     const tbody = document.getElementById('azureRecentCostBody');
@@ -108,11 +116,11 @@ function renderAzCostByServiceChart() {
   if (!ctx) return;
   if (azCostByServiceChart) { azCostByServiceChart.destroy(); azCostByServiceChart = null; }
 
-  // 서비스별 KRW 합산
+  // 업로드된 리소스 비용을 서비스명 기준으로 합산 (최근 기준월)
   const map = {};
-  allAzureCosts.forEach(c => {
-    const key = c.service_name || '기타';
-    map[key] = (map[key] || 0) + (Number(c.actual_cost_krw) || 0);
+  dashAruLatest.forEach(r => {
+    const key = r.service_name || '기타';
+    map[key] = (map[key] || 0) + (Number(r.cost_krw) || 0);
   });
   const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
   if (!sorted.length) return;
@@ -136,42 +144,31 @@ function renderAzCostByServiceChart() {
   });
 }
 
-// 서비스(품의서)별 당월-전월 증감 표 (월별 비용대장 피벗과 동일한 집계 기준 사용)
+// 서비스별 당월-전월 증감 표 (업로드된 리소스 비용 기준, 최근/직전 기준월)
 function renderAzCostServiceMomTable() {
   const tbody = document.getElementById('azCostServiceMomBody');
   if (!tbody) return;
 
-  const periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
-  if (periods.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">데이터 없음</td></tr>`;
+  if (!dashAruLatest.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">업로드된 리소스 비용 데이터 없음</td></tr>`;
     return;
   }
-  const latest = periods[periods.length - 1];
-  const prev   = periods[periods.length - 2];
 
-  // 서비스별 당월/전월 합계 (allAzureCosts 기준 = 월별 비용대장과 동일 데이터)
   const latestMap = {};
   const prevMap   = {};
-  allAzureCosts.forEach(c => {
-    const key = c.service_name || '기타';
-    if (c.period === latest) latestMap[key] = (latestMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
-    if (prev && c.period === prev) prevMap[key] = (prevMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
-  });
+  dashAruLatest.forEach(r => { const k = r.service_name || '기타'; latestMap[k] = (latestMap[k] || 0) + (Number(r.cost_krw) || 0); });
+  dashAruPrev.forEach(r   => { const k = r.service_name || '기타'; prevMap[k]   = (prevMap[k]   || 0) + (Number(r.cost_krw) || 0); });
+  const hasPrev = dashAruPrev.length > 0;
 
   const services = [...new Set([...Object.keys(latestMap), ...Object.keys(prevMap)])]
     .sort((a, b) => (latestMap[b] || 0) - (latestMap[a] || 0));
-
-  if (!services.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">${latest} 데이터 없음</td></tr>`;
-    return;
-  }
 
   tbody.innerHTML = services.map(svc => {
     const cur  = latestMap[svc] || 0;
     const pv   = prevMap[svc]   || 0;
     const diff = cur - pv;
     const diffCls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
-    const diffTxt = prev ? `${diff > 0 ? '+' : ''}₩${diff.toLocaleString()}` : '-';
+    const diffTxt = hasPrev ? `${diff > 0 ? '+' : ''}₩${diff.toLocaleString()}` : '-';
     return `
       <tr class="border-b border-gray-50">
         <td class="py-1.5 text-gray-700">${svc}</td>
@@ -2374,6 +2371,81 @@ async function _aruDeleteByPeriod(period) {
   if (!res.ok) throw new Error(`삭제 실패 ${res.status}: ${await res.text()}`);
 }
 
+// 데이터가 존재하는 가장 최근 기준월 (비용 대시보드 연동용)
+async function _aruLatestPeriod() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?select=period&order=period.desc&limit=1`;
+    const res = await fetch(url, { headers: SB_HEADERS });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows.length ? rows[0].period : null;
+  } catch { return null; }
+}
+
+// 데이터가 존재하는 기준월 목록 (오름차순) — 대시보드 당월/전월 비교용
+async function _aruDistinctPeriods() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?select=period&order=period.asc&limit=100000`;
+    const res = await fetch(url, { headers: SB_HEADERS });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return [...new Set(rows.map(r => r.period).filter(Boolean))].sort();
+  } catch { return []; }
+}
+
+// 비용 대시보드 연동용 상태 (업로드된 리소스 비용)
+let dashAruLatest = [];        // 최근 기준월 행
+let dashAruPrev = [];          // 직전 기준월 행
+let dashAruLatestPeriod = null;
+let dashAruPrevPeriod = null;
+
+const _aruCostOf = r => Number(r.cost_krw) || 0;
+
+// [분류(서비스구분) 기준] 서비스구분별 리소스 비용 패널 — 분류 > 서비스명 계층
+function renderAruCategorySummary() {
+  const box = document.getElementById('azResGroupSummary');
+  if (!box) return;
+  const rows = dashAruLatest;
+  if (!rows || !rows.length) {
+    box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">업로드된 리소스 비용 명세가 없습니다.<br><span class="text-xs text-gray-300">월별 비용대장 하단에서 Excel을 업로드하세요.</span></div>`;
+    return;
+  }
+  // 분류 > 서비스명 계층 집계
+  const cats = {}; // { 분류: { total, count, services: { 서비스명: { total, count } } } }
+  rows.forEach(r => {
+    const c = r.category || '미분류';
+    const s = r.service_name || '기타';
+    const cost = _aruCostOf(r);
+    if (!cats[c]) cats[c] = { total: 0, count: 0, services: {} };
+    cats[c].total += cost; cats[c].count += 1;
+    if (!cats[c].services[s]) cats[c].services[s] = { total: 0, count: 0 };
+    cats[c].services[s].total += cost; cats[c].services[s].count += 1;
+  });
+  const catOrder = Object.keys(cats).sort((a, b) => cats[b].total - cats[a].total);
+  const won = v => '₩' + Math.round(v).toLocaleString();
+
+  box.innerHTML = catOrder.map(c => {
+    const g = cats[c];
+    const svcOrder = Object.keys(g.services).sort((a, b) => g.services[b].total - g.services[a].total);
+    const svcRows = svcOrder.map(s => {
+      const sd = g.services[s];
+      return `
+        <div class="flex items-center justify-between py-1 pl-6 text-xs border-b border-gray-50 last:border-0">
+          <span class="text-gray-500"><i class="fas fa-level-up-alt fa-rotate-90 text-gray-300 mr-1.5"></i>${s} <span class="text-gray-300">(${sd.count}개)</span></span>
+          <span class="font-medium text-gray-600">${won(sd.total)}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div class="mb-2">
+        <div class="flex items-center justify-between py-1.5 bg-indigo-50/60 rounded-lg px-2">
+          <span class="text-sm font-bold text-indigo-700">${c} <span class="text-xs font-normal text-indigo-400">(리소스 ${g.count}개)</span></span>
+          <span class="text-sm font-bold text-indigo-700">${won(g.total)}</span>
+        </div>
+        ${svcRows}
+      </div>`;
+  }).join('');
+}
+
 // 배열 청크 단위 대량 insert
 async function _aruInsertBatch(rows) {
   const CHUNK = 500;
@@ -2437,7 +2509,7 @@ function renderAruGroups() {
   setEl('aruCount', `${rows.length}건`);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-16 text-gray-400"><i class="fas fa-layer-group text-4xl block mb-3 opacity-20"></i>표시할 리소스 사용 명세가 없습니다.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-16 text-gray-400"><i class="fas fa-layer-group text-4xl block mb-3 opacity-20"></i>표시할 리소스 비용 명세가 없습니다.</td></tr>`;
     return;
   }
 
@@ -2450,31 +2522,32 @@ function renderAruGroups() {
   const order = Object.keys(groups).sort((a, b) => a.localeCompare(b));
 
   const esc = v => String(v ?? '').replace(/"/g, '&quot;');
-  const fmtUsage = v => { const n = _aruNum(v); return n === null ? (v || '-') : n.toLocaleString(); };
+  const won = v => '₩' + (Number(v) || 0).toLocaleString();
 
   let html = '';
   order.forEach(svc => {
     const list = groups[svc];
-    const depts = [...new Set(list.map(r => r.department).filter(Boolean))];
-    const nums = list.map(r => _aruNum(r.resource_usage)).filter(n => n !== null);
-    const usageSum = nums.length ? nums.reduce((a, b) => a + b, 0) : null;
+    const cats = [...new Set(list.map(r => r.category).filter(Boolean))];
+    const costSum = list.reduce((s, r) => s + (Number(r.cost_krw) || 0), 0);
     const expanded = aruExpanded[svc] === true; // 기본 접힘 (대용량 대비)
     const caret = expanded ? 'fa-chevron-down' : 'fa-chevron-right';
     const svcJs = svc.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
     html += `<tr class="bg-blue-50/50 border-y border-blue-100 cursor-pointer hover:bg-blue-100/50" onclick="toggleAruGroup('${svcJs}')">
       <td class="px-4 py-2.5 font-bold text-gray-800"><i class="fas ${caret} text-xs text-blue-500 mr-2"></i>${svc} <span class="text-xs font-normal text-gray-400 ml-1">${list.length}개 리소스</span></td>
-      <td class="px-4 py-2.5 text-xs text-gray-500">${depts.length ? depts.join(', ') : '-'}</td>
+      <td class="px-4 py-2.5 text-xs text-gray-500">${cats.length ? cats.join(', ') : '-'}</td>
       <td class="px-4 py-2.5"></td>
-      <td class="px-4 py-2.5 text-right font-bold text-blue-700">${usageSum === null ? '<span class="text-gray-300 font-normal">합계 불가</span>' : '합계 ' + usageSum.toLocaleString()}</td>
+      <td class="px-4 py-2.5"></td>
+      <td class="px-4 py-2.5 text-right font-bold text-blue-700">${won(costSum)}</td>
     </tr>`;
 
     if (expanded) {
       html += list.map(r => `<tr class="border-b border-gray-50 hover:bg-gray-50">
         <td class="px-4 py-2 pl-10 text-gray-700">${r.resource_name || '-'}</td>
+        <td class="px-4 py-2 text-xs text-gray-500">${r.category || '-'}</td>
         <td class="px-4 py-2 text-xs text-gray-500">${r.department || '-'}</td>
         <td class="px-4 py-2 text-xs text-gray-500 max-w-md truncate" title="${esc(r.resource_desc)}">${r.resource_desc || '-'}</td>
-        <td class="px-4 py-2 text-right text-gray-600">${fmtUsage(r.resource_usage)}</td>
+        <td class="px-4 py-2 text-right text-gray-600">${won(r.cost_krw)}</td>
       </tr>`).join('');
     }
   });
@@ -2485,11 +2558,12 @@ function renderAruGroups() {
 // 업로드 헤더명 → DB 컬럼 매핑 (공백/대소문자 무시, 약간의 변형 허용)
 function _aruMapHeader(h) {
   const k = String(h || '').replace(/\s/g, '').toLowerCase();
-  if (['서비스명', '서비스', 'service', 'servicename'].includes(k)) return 'service_name';
+  if (['분류', '카테고리', 'category', 'group', 'servicegroup', '서비스구분'].includes(k)) return 'category';
   if (['부서', 'department', 'dept'].includes(k)) return 'department';
+  if (['서비스명', '서비스', 'service', 'servicename'].includes(k)) return 'service_name';
   if (['리소스명', '리소스', 'resource', 'resourcename'].includes(k)) return 'resource_name';
   if (['리소스설명', '설명', 'resourcedesc', 'description', 'desc'].includes(k)) return 'resource_desc';
-  if (['리소스사용량', '사용량', 'usage', 'resourceusage', 'quantity', 'qty'].includes(k)) return 'resource_usage';
+  if (['리소스비용(원화)', '리소스비용', '비용(원화)', '비용', '비용원화', 'cost', 'costkrw', 'amount', '금액'].includes(k)) return 'cost_krw';
   return null;
 }
 
@@ -2523,7 +2597,7 @@ async function handleAruUpload(event) {
       if (map.service_name !== undefined) { headerRowIdx = i; colMap = map; break; }
     }
     if (headerRowIdx < 0 || !colMap) {
-      showToast('헤더에서 "서비스명" 열을 찾지 못했습니다. 양식(서비스명·부서·리소스명·리소스 설명·리소스 사용량)을 확인해주세요.', 'error');
+      showToast('헤더에서 "서비스명" 열을 찾지 못했습니다. 양식(분류·부서·서비스명·리소스명·리소스 설명·리소스 비용(원화))을 확인해주세요.', 'error');
       if (statusEl) statusEl.textContent = '';
       return;
     }
@@ -2534,14 +2608,15 @@ async function handleAruUpload(event) {
     for (let i = headerRowIdx + 1; i < aoa.length; i++) {
       const row = aoa[i] || [];
       const svc = String(row[colMap.service_name] ?? '').trim();
-      if (!svc) { skipped++; continue; } // 서비스명 없는 행 제외 (서비스명으로만 맵핑)
+      if (!svc) { skipped++; continue; } // 서비스명 없는 행 제외 (서비스명으로 맵핑)
       parsed.push({
         period,
-        service_name:   svc,
-        department:     colMap.department     !== undefined ? String(row[colMap.department] ?? '').trim() : '',
-        resource_name:  colMap.resource_name  !== undefined ? String(row[colMap.resource_name] ?? '').trim() : '',
-        resource_desc:  colMap.resource_desc  !== undefined ? String(row[colMap.resource_desc] ?? '').trim() : '',
-        resource_usage: colMap.resource_usage !== undefined ? String(row[colMap.resource_usage] ?? '').trim() : '',
+        category:      colMap.category      !== undefined ? (String(row[colMap.category] ?? '').trim() || '미분류') : '미분류',
+        department:    colMap.department     !== undefined ? String(row[colMap.department] ?? '').trim() : '',
+        service_name:  svc,
+        resource_name: colMap.resource_name  !== undefined ? String(row[colMap.resource_name] ?? '').trim() : '',
+        resource_desc: colMap.resource_desc  !== undefined ? String(row[colMap.resource_desc] ?? '').trim() : '',
+        cost_krw:      colMap.cost_krw       !== undefined ? (_aruNum(row[colMap.cost_krw]) ?? 0) : 0,
         created_at: now,
       });
     }
@@ -2573,10 +2648,10 @@ async function handleAruUpload(event) {
 
 function downloadAruTemplate() {
   if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
-  const headers = ['서비스명', '부서', '리소스명', '리소스 설명', '리소스 사용량'];
-  const example = ['App Service', '경영지원팀', 'gowit-web-prod', '프로덕션 웹앱 인스턴스', '720'];
+  const headers = ['분류', '부서', '서비스명', '리소스명', '리소스 설명', '리소스 비용(원화)'];
+  const example = ['Goworks', '경영지원팀', 'AI Framework', 'gowit-web-prod', '프로덕션 웹앱 인스턴스', 20000];
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 34 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 32 }, { wch: 16 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '리소스사용량');
   XLSX.writeFile(wb, 'Azure_리소스사용량_업로드양식.xlsx');
@@ -2586,14 +2661,15 @@ function downloadAruTemplate() {
 function exportAruExcel() {
   if (!allAru.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
   if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
-  const headers = ['서비스명', '부서', '리소스명', '리소스 설명', '리소스 사용량'];
-  const sorted = [...allAru].sort((a, b) => (a.service_name || '').localeCompare(b.service_name || ''));
-  const rows = sorted.map(r => [r.service_name || '', r.department || '', r.resource_name || '', r.resource_desc || '', r.resource_usage || '']);
+  const headers = ['분류', '부서', '서비스명', '리소스명', '리소스 설명', '리소스 비용(원화)'];
+  const sorted = [...allAru].sort((a, b) =>
+    (a.category || '').localeCompare(b.category || '') || (a.service_name || '').localeCompare(b.service_name || ''));
+  const rows = sorted.map(r => [r.category || '', r.department || '', r.service_name || '', r.resource_name || '', r.resource_desc || '', Number(r.cost_krw) || 0]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 34 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 32 }, { wch: 16 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '리소스사용명세');
-  XLSX.writeFile(wb, `Azure리소스사용명세_${_aruCurrentPeriod()}_${Date.now()}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, '리소스비용명세');
+  XLSX.writeFile(wb, `Azure리소스비용명세_${_aruCurrentPeriod()}_${Date.now()}.xlsx`);
   showToast('Excel 파일이 다운로드되었습니다.', 'success');
 }
 
