@@ -822,6 +822,24 @@
         <div class="bg-gray-50 border border-gray-200 rounded-xl p-4"><div class="text-xs text-gray-600 font-semibold mb-1">등록 건수</div><div id="aiCostStatCount" class="text-xl font-bold text-gray-700">0건</div></div>
       </div>
 
+      <!-- 매월 보고용 피벗 요약표 (라이선스별) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-table text-violet-500"></i>월별 보고 (라이선스별)</span>
+          <div class="flex gap-2">
+            <button onclick="printAiCostReport()" class="text-xs px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 flex items-center gap-1"><i class="fas fa-print"></i>인쇄</button>
+            <button onclick="exportAiCostPivotExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" id="aiCostPivotTable">
+            <thead id="aiCostPivotHead" class="bg-gray-50 text-xs font-semibold text-gray-500"></thead>
+            <tbody id="aiCostPivotBody"><tr><td class="text-center py-16 text-gray-400">비용 데이터가 없습니다.</td></tr></tbody>
+            <tfoot id="aiCostPivotFoot" class="bg-amber-50 text-xs font-bold text-amber-800"></tfoot>
+          </table>
+        </div>
+      </div>
+
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <span id="aiCostCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
