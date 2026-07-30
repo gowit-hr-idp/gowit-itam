@@ -103,7 +103,7 @@
       </button>
       <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-seats"><i class="fas fa-user-tag w-4 text-center flex-shrink-0"></i><span class="sidebar-text">배포 현황</span></a></li>
-        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-dept-summary"><i class="fas fa-building w-4 text-center flex-shrink-0"></i><span class="sidebar-text">사업부별 비용집계</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-dept-summary"><i class="fas fa-building w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용집계</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-history"><i class="fas fa-history w-4 text-center flex-shrink-0"></i><span class="sidebar-text">갱신·회수 이력</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="ai-licenses"><i class="fas fa-id-card w-4 text-center flex-shrink-0"></i><span class="sidebar-text">라이선스 현황 (제품별)</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월 비용대장</span></a></li>
@@ -656,19 +656,22 @@
       </div>
     </section>
 
-    <!-- ===== AI 라이선스 - 사업부별 비용집계 ===== -->
+    <!-- ===== AI 라이선스 - 비용집계 ===== -->
     <section id="page-ai-dept-summary" class="page-section hidden">
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
         <div class="flex flex-wrap gap-3 items-end">
           <div><label class="text-xs font-semibold text-gray-600 block mb-1">기준월</label><input type="month" id="aiDeptSummaryMonth" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"/></div>
           <button onclick="renderAiDeptSummary()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-sync"></i>새로고침</button>
+          <button onclick="printAiDeptSummary()" class="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 flex items-center gap-1.5"><i class="fas fa-print"></i>인쇄</button>
+          <button onclick="exportAiDeptSummaryExcel()" class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1.5"><i class="fas fa-file-excel"></i>Excel</button>
           <p class="text-xs text-gray-400 pb-2">※ "배포 현황"의 활성 시트를 기준으로 자동 집계됩니다 (별도 입력 불필요)</p>
         </div>
       </div>
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+      <!-- 1) 사업부별 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-building text-violet-500"></i>사업부별 시트 비용 집계</span>
-          <button onclick="exportAiDeptSummaryExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-building text-violet-500"></i>1. 사업부별 시트 비용 집계</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -685,6 +688,30 @@
             </thead>
             <tbody id="aiDeptSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
             <tfoot id="aiDeptSummaryFoot" class="bg-violet-50 text-sm font-bold text-violet-800"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2) 배포목적별 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-bullseye text-violet-500"></i>2. 배포목적별 시트 비용 집계</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">배포목적</th>
+                <th class="px-4 py-3 text-center">Standard 인원</th>
+                <th class="px-4 py-3 text-center">Premium 인원</th>
+                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
+                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
+                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
+                <th class="px-4 py-3 text-right">합계(USD)</th>
+              </tr>
+            </thead>
+            <tbody id="aiPurposeSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
+            <tfoot id="aiPurposeSummaryFoot" class="bg-violet-50 text-sm font-bold text-violet-800"></tfoot>
           </table>
         </div>
       </div>
