@@ -1928,6 +1928,14 @@ function toggleAzCostList() {
   if (caret) caret.className = `fas ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-xs text-blue-500 transition-transform`;
 }
 
+// 메뉴 진입 시 항상 접힌 상태로 초기화
+function collapseAzCostList() {
+  const wrap = document.getElementById('azCostListWrap');
+  const caret = document.getElementById('azCostListCaret');
+  if (wrap) wrap.classList.add('hidden');
+  if (caret) caret.className = 'fas fa-chevron-right text-xs text-blue-500 transition-transform';
+}
+
 function renderAzureCostTable() {
   registerSortableTable('azcost', () => filteredAzureCosts, (a) => { filteredAzureCosts = a; }, renderAzureCostTable);
   const tbody = document.getElementById('azCostTableBody');
