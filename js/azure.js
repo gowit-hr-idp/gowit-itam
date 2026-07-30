@@ -1605,32 +1605,74 @@ function aggregateAiSeats(active, keyFn) {
 
 const _aiFmtUsd = v => '$' + (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
-// 집계 결과를 특정 tbody/tfoot에 렌더
-function renderAiSummaryTable(groups, bodyId, footId) {
-  const tbody = document.getElementById(bodyId);
-  const tfoot = document.getElementById(footId);
+// 집계 결과를 특정 tbody/tfoot에 렌더 (정렬 지원)
+const _aiSummaryState = {
+  dept:    { groups: null, field: 'total', dir: 'desc', bodyId: 'aiDeptSummaryBody',    footId: 'aiDeptSummaryFoot' },
+  purpose: { groups: null, field: 'total', dir: 'desc', bodyId: 'aiPurposeSummaryBody', footId: 'aiPurposeSummaryFoot' },
+};
+
+function _aiSummaryRows(groups) {
+  return Object.keys(groups).map(k => {
+    const g = groups[k];
+    return { key: k, std: g.std, prem: g.prem, stdCost: g.stdCost, premCost: g.premCost, extra: g.extra, total: g.stdCost + g.premCost + g.extra };
+  });
+}
+
+// 헤더 클릭 → 정렬 (같은 열 다시 클릭 시 방향 토글)
+function sortAiSummary(tableKey, field) {
+  const st = _aiSummaryState[tableKey];
+  if (!st || !st.groups) return;
+  if (st.field === field) st.dir = st.dir === 'asc' ? 'desc' : 'asc';
+  else { st.field = field; st.dir = (field === 'key') ? 'asc' : 'desc'; }
+  renderAiSummaryTable(tableKey);
+}
+
+function _updateAiSortIcons(tbody, st) {
+  const table = tbody.closest('table');
+  if (!table) return;
+  table.querySelectorAll('thead th[data-field]').forEach(th => {
+    const ico = th.querySelector('.ai-sort-ico');
+    if (!ico) return;
+    if (th.getAttribute('data-field') === st.field) {
+      ico.className = `ai-sort-ico fas ${st.dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} text-violet-500 ml-1`;
+    } else {
+      ico.className = 'ai-sort-ico fas fa-sort text-gray-300 ml-1';
+    }
+  });
+}
+
+function renderAiSummaryTable(tableKey) {
+  const st = _aiSummaryState[tableKey];
+  if (!st) return;
+  const tbody = document.getElementById(st.bodyId);
+  const tfoot = document.getElementById(st.footId);
   if (!tbody) return;
 
-  const keys = Object.keys(groups).sort((a,b) => {
-    const ta = groups[a].stdCost + groups[a].premCost + groups[a].extra;
-    const tb = groups[b].stdCost + groups[b].premCost + groups[b].extra;
-    return tb - ta;
+  if (!st.groups || !Object.keys(st.groups).length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
+    if (tfoot) tfoot.innerHTML = '';
+    return;
+  }
+
+  const rows = _aiSummaryRows(st.groups);
+  const f = st.field, dir = st.dir === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    if (f === 'key') return dir * String(a.key).localeCompare(String(b.key), 'ko');
+    return dir * (((a[f]) || 0) - ((b[f]) || 0));
   });
 
   let gStd=0, gPrem=0, gStdC=0, gPremC=0, gExtra=0;
-  tbody.innerHTML = keys.map(k => {
-    const g = groups[k];
-    const total = g.stdCost + g.premCost + g.extra;
-    gStd += g.std; gPrem += g.prem; gStdC += g.stdCost; gPremC += g.premCost; gExtra += g.extra;
+  tbody.innerHTML = rows.map(r => {
+    gStd += r.std; gPrem += r.prem; gStdC += r.stdCost; gPremC += r.premCost; gExtra += r.extra;
     return `
       <tr class="border-b border-gray-50 hover:bg-violet-50/20">
-        <td class="px-4 py-2.5 font-medium text-gray-700">${k}</td>
-        <td class="px-4 py-2.5 text-center">${g.std}</td>
-        <td class="px-4 py-2.5 text-center">${g.prem}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.stdCost)}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.premCost)}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(g.extra)}</td>
-        <td class="px-4 py-2.5 text-right font-bold text-violet-700">${_aiFmtUsd(total)}</td>
+        <td class="px-4 py-2.5 font-medium text-gray-700">${r.key}</td>
+        <td class="px-4 py-2.5 text-center">${r.std}</td>
+        <td class="px-4 py-2.5 text-center">${r.prem}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.stdCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.premCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.extra)}</td>
+        <td class="px-4 py-2.5 text-right font-bold text-violet-700">${_aiFmtUsd(r.total)}</td>
       </tr>`;
   }).join('');
 
@@ -1647,6 +1689,8 @@ function renderAiSummaryTable(groups, bodyId, footId) {
         <td class="px-4 py-2.5 text-right">${_aiFmtUsd(grand)}</td>
       </tr>`;
   }
+
+  _updateAiSortIcons(tbody, st);
 }
 
 async function renderAiDeptSummary() {
@@ -1657,16 +1701,12 @@ async function renderAiDeptSummary() {
     }
     const active = allAiLicenseSeats.filter(s => s.status === '활성');
 
-    if (!active.length) {
-      const empty = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
-      ['aiDeptSummaryBody','aiPurposeSummaryBody'].forEach(id => { const b=document.getElementById(id); if(b) b.innerHTML = empty; });
-      ['aiDeptSummaryFoot','aiPurposeSummaryFoot'].forEach(id => { const f=document.getElementById(id); if(f) f.innerHTML = ''; });
-      return;
-    }
+    // 1) 사업부별  2) 배포목적별 — 그룹 데이터를 상태에 저장 후 정렬 렌더
+    _aiSummaryState.dept.groups    = active.length ? aggregateAiSeats(active, s => s.department) : null;
+    _aiSummaryState.purpose.groups = active.length ? aggregateAiSeats(active, s => s.purpose)    : null;
 
-    // 1) 사업부별  2) 배포목적별
-    renderAiSummaryTable(aggregateAiSeats(active, s => s.department), 'aiDeptSummaryBody', 'aiDeptSummaryFoot');
-    renderAiSummaryTable(aggregateAiSeats(active, s => s.purpose),    'aiPurposeSummaryBody', 'aiPurposeSummaryFoot');
+    renderAiSummaryTable('dept');
+    renderAiSummaryTable('purpose');
   } catch (e) {
     showToast('비용집계 로드 실패: ' + e.message, 'error');
   }
