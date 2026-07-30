@@ -2316,6 +2316,296 @@ function exportAzureCostPivotExcel() {
 }
 
 // ============================================================
+// [리뉴얼] Azure 리소스 사용 명세 (서비스별) — 대용량 Excel 업로드
+//   업로드 양식 순서: 서비스명 · 부서 · 리소스명 · 리소스 설명 · 리소스 사용량
+//   서비스명 기준으로만 그룹핑/맵핑. 기준월 단위로 관리.
+// ============================================================
+const ARU_TBL = 'azure_resource_usage';
+let allAru = [];            // 현재 기준월의 리소스 사용 명세
+const aruExpanded = {};     // { 서비스명: true(펼침)/false(접힘) } — 기본 접힘
+
+function _aruCurrentPeriod() {
+  const el = document.getElementById('aruPeriod');
+  if (el && el.value) return el.value;
+  const now = new Date();
+  const p = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if (el) el.value = p;
+  return p;
+}
+
+// 숫자 파싱 (콤마/공백 제거). 숫자가 아니면 null
+function _aruNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).replace(/[,\s]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+// period 필터 + 페이지네이션 조회 (대용량 대비)
+async function _aruFetchByPeriod(period) {
+  const all = [];
+  const pageSize = 1000;
+  let offset = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?period=eq.${encodeURIComponent(period)}&order=service_name.asc&limit=${pageSize}&offset=${offset}`;
+    const res = await fetch(url, { headers: SB_HEADERS });
+    if (!res.ok) throw new Error(`조회 실패 ${res.status}: ${await res.text()}`);
+    const rows = await res.json();
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
+async function _aruDeleteByPeriod(period) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${ARU_TBL}?period=eq.${encodeURIComponent(period)}`, {
+    method: 'DELETE', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+  });
+  if (!res.ok) throw new Error(`삭제 실패 ${res.status}: ${await res.text()}`);
+}
+
+// 배열 청크 단위 대량 insert
+async function _aruInsertBatch(rows) {
+  const CHUNK = 500;
+  const statusEl = document.getElementById('aruUploadStatus');
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${ARU_TBL}`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(chunk),
+    });
+    if (!res.ok) throw new Error(`업로드 실패 ${res.status}: ${await res.text()}`);
+    if (statusEl) statusEl.textContent = `업로드 중… ${Math.min(i + CHUNK, rows.length)} / ${rows.length}`;
+  }
+}
+
+async function loadAzureResourceUsage() {
+  const period = _aruCurrentPeriod();
+  try {
+    allAru = await _aruFetchByPeriod(period);
+
+    // 서비스 필터 옵션 채우기
+    const services = [...new Set(allAru.map(r => r.service_name || '기타'))].sort((a, b) => a.localeCompare(b));
+    const sel = document.getElementById('aruServiceFilter');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">전체 서비스</option>' +
+        services.map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
+      if (services.includes(cur)) sel.value = cur;
+    }
+    renderAruGroups();
+  } catch (e) {
+    showToast('리소스 사용 명세 조회 실패: ' + e.message, 'error');
+  }
+}
+
+function toggleAruGroup(svc) {
+  aruExpanded[svc] = !(aruExpanded[svc] === true);
+  renderAruGroups();
+}
+
+function expandAllAruGroups(expand) {
+  const services = [...new Set(allAru.map(r => r.service_name || '기타'))];
+  services.forEach(s => { aruExpanded[s] = !!expand; });
+  renderAruGroups();
+}
+
+function renderAruGroups() {
+  const tbody = document.getElementById('aruTableBody');
+  if (!tbody) return;
+
+  const q = (document.getElementById('aruSearch')?.value || '').trim().toLowerCase();
+  const svcFilter = document.getElementById('aruServiceFilter')?.value || '';
+
+  let rows = allAru.slice();
+  if (svcFilter) rows = rows.filter(r => (r.service_name || '기타') === svcFilter);
+  if (q) rows = rows.filter(r =>
+    (r.resource_name || '').toLowerCase().includes(q) ||
+    (r.resource_desc || '').toLowerCase().includes(q));
+
+  setEl('aruCount', `${rows.length}건`);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-16 text-gray-400"><i class="fas fa-layer-group text-4xl block mb-3 opacity-20"></i>표시할 리소스 사용 명세가 없습니다.</td></tr>`;
+    return;
+  }
+
+  // 서비스명 기준 그룹핑
+  const groups = {};
+  rows.forEach(r => {
+    const s = r.service_name || '기타';
+    (groups[s] = groups[s] || []).push(r);
+  });
+  const order = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+
+  const esc = v => String(v ?? '').replace(/"/g, '&quot;');
+  const fmtUsage = v => { const n = _aruNum(v); return n === null ? (v || '-') : n.toLocaleString(); };
+
+  let html = '';
+  order.forEach(svc => {
+    const list = groups[svc];
+    const depts = [...new Set(list.map(r => r.department).filter(Boolean))];
+    const nums = list.map(r => _aruNum(r.resource_usage)).filter(n => n !== null);
+    const usageSum = nums.length ? nums.reduce((a, b) => a + b, 0) : null;
+    const expanded = aruExpanded[svc] === true; // 기본 접힘 (대용량 대비)
+    const caret = expanded ? 'fa-chevron-down' : 'fa-chevron-right';
+    const svcJs = svc.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    html += `<tr class="bg-blue-50/50 border-y border-blue-100 cursor-pointer hover:bg-blue-100/50" onclick="toggleAruGroup('${svcJs}')">
+      <td class="px-4 py-2.5 font-bold text-gray-800"><i class="fas ${caret} text-xs text-blue-500 mr-2"></i>${svc} <span class="text-xs font-normal text-gray-400 ml-1">${list.length}개 리소스</span></td>
+      <td class="px-4 py-2.5 text-xs text-gray-500">${depts.length ? depts.join(', ') : '-'}</td>
+      <td class="px-4 py-2.5"></td>
+      <td class="px-4 py-2.5 text-right font-bold text-blue-700">${usageSum === null ? '<span class="text-gray-300 font-normal">합계 불가</span>' : '합계 ' + usageSum.toLocaleString()}</td>
+    </tr>`;
+
+    if (expanded) {
+      html += list.map(r => `<tr class="border-b border-gray-50 hover:bg-gray-50">
+        <td class="px-4 py-2 pl-10 text-gray-700">${r.resource_name || '-'}</td>
+        <td class="px-4 py-2 text-xs text-gray-500">${r.department || '-'}</td>
+        <td class="px-4 py-2 text-xs text-gray-500 max-w-md truncate" title="${esc(r.resource_desc)}">${r.resource_desc || '-'}</td>
+        <td class="px-4 py-2 text-right text-gray-600">${fmtUsage(r.resource_usage)}</td>
+      </tr>`).join('');
+    }
+  });
+
+  tbody.innerHTML = html;
+}
+
+// 업로드 헤더명 → DB 컬럼 매핑 (공백/대소문자 무시, 약간의 변형 허용)
+function _aruMapHeader(h) {
+  const k = String(h || '').replace(/\s/g, '').toLowerCase();
+  if (['서비스명', '서비스', 'service', 'servicename'].includes(k)) return 'service_name';
+  if (['부서', 'department', 'dept'].includes(k)) return 'department';
+  if (['리소스명', '리소스', 'resource', 'resourcename'].includes(k)) return 'resource_name';
+  if (['리소스설명', '설명', 'resourcedesc', 'description', 'desc'].includes(k)) return 'resource_desc';
+  if (['리소스사용량', '사용량', 'usage', 'resourceusage', 'quantity', 'qty'].includes(k)) return 'resource_usage';
+  return null;
+}
+
+async function handleAruUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ''; // 같은 파일 재선택 허용
+  if (!file) return;
+
+  if (typeof AuthManager !== 'undefined' && AuthManager.hasPermission && !AuthManager.hasPermission('azure', 'write')) {
+    showToast('업로드 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  if (typeof XLSX === 'undefined') { showToast('Excel 파서를 사용할 수 없습니다.', 'error'); return; }
+
+  const period = _aruCurrentPeriod();
+  const statusEl = document.getElementById('aruUploadStatus');
+  if (statusEl) statusEl.textContent = '파일 읽는 중…';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
+    if (!aoa.length) { showToast('빈 파일입니다.', 'warning'); if (statusEl) statusEl.textContent = ''; return; }
+
+    // 헤더 행 탐색 (상단 10행 내에서 '서비스명' 열이 있는 첫 행)
+    let headerRowIdx = -1, colMap = null;
+    for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+      const map = {};
+      aoa[i].forEach((cell, idx) => { const f = _aruMapHeader(cell); if (f && map[f] === undefined) map[f] = idx; });
+      if (map.service_name !== undefined) { headerRowIdx = i; colMap = map; break; }
+    }
+    if (headerRowIdx < 0 || !colMap) {
+      showToast('헤더에서 "서비스명" 열을 찾지 못했습니다. 양식(서비스명·부서·리소스명·리소스 설명·리소스 사용량)을 확인해주세요.', 'error');
+      if (statusEl) statusEl.textContent = '';
+      return;
+    }
+
+    const now = Date.now();
+    const parsed = [];
+    let skipped = 0;
+    for (let i = headerRowIdx + 1; i < aoa.length; i++) {
+      const row = aoa[i] || [];
+      const svc = String(row[colMap.service_name] ?? '').trim();
+      if (!svc) { skipped++; continue; } // 서비스명 없는 행 제외 (서비스명으로만 맵핑)
+      parsed.push({
+        period,
+        service_name:   svc,
+        department:     colMap.department     !== undefined ? String(row[colMap.department] ?? '').trim() : '',
+        resource_name:  colMap.resource_name  !== undefined ? String(row[colMap.resource_name] ?? '').trim() : '',
+        resource_desc:  colMap.resource_desc  !== undefined ? String(row[colMap.resource_desc] ?? '').trim() : '',
+        resource_usage: colMap.resource_usage !== undefined ? String(row[colMap.resource_usage] ?? '').trim() : '',
+        created_at: now,
+      });
+    }
+
+    if (!parsed.length) { showToast('가져올 데이터가 없습니다 (서비스명이 있는 행 없음).', 'warning'); if (statusEl) statusEl.textContent = ''; return; }
+
+    // 기존 월 데이터 처리: 교체 vs 추가
+    const existing = await _aruFetchByPeriod(period);
+    if (existing.length) {
+      const replace = confirm(`${period} 기준월에 이미 ${existing.length}건이 있습니다.\n\n[확인] 기존 데이터를 삭제하고 새로 업로드\n[취소] 기존 데이터에 이어서 추가`);
+      if (replace) {
+        if (statusEl) statusEl.textContent = '기존 데이터 삭제 중…';
+        await _aruDeleteByPeriod(period);
+      }
+    }
+
+    if (statusEl) statusEl.textContent = `업로드 중… 0 / ${parsed.length}`;
+    await _aruInsertBatch(parsed);
+
+    const msg = `${parsed.length.toLocaleString()}건 업로드 완료` + (skipped ? ` (서비스명 없는 ${skipped}건 제외)` : '');
+    showToast(msg, 'success');
+    if (statusEl) statusEl.textContent = msg;
+    await loadAzureResourceUsage();
+  } catch (e) {
+    showToast('업로드 실패: ' + e.message, 'error');
+    if (statusEl) statusEl.textContent = '';
+  }
+}
+
+function downloadAruTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
+  const headers = ['서비스명', '부서', '리소스명', '리소스 설명', '리소스 사용량'];
+  const example = ['App Service', '경영지원팀', 'gowit-web-prod', '프로덕션 웹앱 인스턴스', '720'];
+  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 34 }, { wch: 14 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '리소스사용량');
+  XLSX.writeFile(wb, 'Azure_리소스사용량_업로드양식.xlsx');
+  showToast('업로드 양식을 다운로드했습니다.', 'success');
+}
+
+function exportAruExcel() {
+  if (!allAru.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
+  const headers = ['서비스명', '부서', '리소스명', '리소스 설명', '리소스 사용량'];
+  const sorted = [...allAru].sort((a, b) => (a.service_name || '').localeCompare(b.service_name || ''));
+  const rows = sorted.map(r => [r.service_name || '', r.department || '', r.resource_name || '', r.resource_desc || '', r.resource_usage || '']);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 34 }, { wch: 14 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '리소스사용명세');
+  XLSX.writeFile(wb, `Azure리소스사용명세_${_aruCurrentPeriod()}_${Date.now()}.xlsx`);
+  showToast('Excel 파일이 다운로드되었습니다.', 'success');
+}
+
+async function deleteAruPeriod() {
+  const period = _aruCurrentPeriod();
+  if (typeof AuthManager !== 'undefined' && AuthManager.hasPermission && !AuthManager.hasPermission('azure', 'write')) {
+    showToast('삭제 권한이 없습니다. 관리자에게 문의하세요.', 'error');
+    return;
+  }
+  if (!allAru.length) { showToast('삭제할 데이터가 없습니다.', 'warning'); return; }
+  if (!confirm(`${period} 기준월의 리소스 사용 명세 ${allAru.length.toLocaleString()}건을 모두 삭제하시겠습니까?`)) return;
+  try {
+    await _aruDeleteByPeriod(period);
+    showToast('삭제되었습니다.', 'success');
+    await loadAzureResourceUsage();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
 // 관리자 콘솔 – 계정 관리
 // ============================================================
 async function loadAdminUsers() {

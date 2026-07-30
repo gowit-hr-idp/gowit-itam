@@ -349,7 +349,7 @@ async function navigateTo(page) {
       await loadAllPromoItems(); populatePromoSelects(); initPromoInOutDefaults(); break;
     case 'promo-history':  loadPromoHistory(); break;
     case 'azure-dashboard': await renderAzureDashboard(); break;
-    case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); break;
+    case 'azure-costs':     refreshAllCategoryDropdowns(); await loadAzureCosts(); loadAzureResourceUsage(); break;
     case 'ai-seats':        await loadAiLicenseSeats(); break;
     case 'ai-dept-summary': await renderAiDeptSummary(); break;
     case 'ai-history':      await loadAiLicenseHistory(); break;
