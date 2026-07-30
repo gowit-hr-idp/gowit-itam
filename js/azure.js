@@ -917,6 +917,7 @@ async function loadAiLicenseCosts() {
     });
 
     renderAiCostTable();
+    renderAiCostPivot();
   } catch (e) {
     showToast('AI 라이선스 비용 로드 실패: ' + e.message, 'error');
   }
@@ -1057,6 +1058,196 @@ function exportAiCostExcel() {
   } else {
     showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
   }
+}
+
+// ============================================================
+// AI 라이선스 - 월별 보고 피벗 (라이선스별 × 월, Azure 월별 비용대장과 동일 구조)
+// ============================================================
+const _aiCostFmtUsd = v => '$' + (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const _aiCostRowTotal = c => (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0);
+const _aiCostPeriodFmt = p => (p||'').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
+
+// filteredAiLicenseCosts -> { licenses:[], periods:[], matrix:{period:{license:합계}} }
+function _buildAiCostPivot() {
+  const licenses = [];
+  filteredAiLicenseCosts.forEach(c => {
+    const l = c.license_name || '기타';
+    if (!licenses.includes(l)) licenses.push(l);
+  });
+  const periods = [...new Set(filteredAiLicenseCosts.map(c => c.period).filter(Boolean))].sort();
+  const matrix = {};
+  periods.forEach(p => { matrix[p] = {}; licenses.forEach(l => matrix[p][l] = 0); });
+  filteredAiLicenseCosts.forEach(c => {
+    const p = c.period; if (!p || !matrix[p]) return;
+    const l = c.license_name || '기타';
+    matrix[p][l] = (matrix[p][l] || 0) + _aiCostRowTotal(c);
+  });
+  return { licenses, periods, matrix };
+}
+
+function renderAiCostPivot() {
+  const head = document.getElementById('aiCostPivotHead');
+  const body = document.getElementById('aiCostPivotBody');
+  const foot = document.getElementById('aiCostPivotFoot');
+  if (!head || !body || !foot) return;
+
+  if (!filteredAiLicenseCosts.length) {
+    head.innerHTML = '';
+    body.innerHTML = `<tr><td class="text-center py-16 text-gray-400">비용 데이터가 없습니다.</td></tr>`;
+    foot.innerHTML = '';
+    return;
+  }
+
+  const { licenses, periods, matrix } = _buildAiCostPivot();
+
+  // 헤더 (기간 | 라이선스... | 월계)
+  let headRow = '<tr><th class="px-3 py-2 text-left border-b border-gray-100">기간</th>';
+  licenses.forEach(l => { headRow += `<th class="px-3 py-2 text-right border-b border-gray-100 whitespace-nowrap">${l}</th>`; });
+  headRow += '<th class="px-3 py-2 text-center border-b border-gray-100">월계</th></tr>';
+  head.innerHTML = headRow;
+
+  // 바디
+  body.innerHTML = periods.map(p => {
+    let total = 0;
+    const cells = licenses.map(l => {
+      const v = matrix[p][l] || 0; total += v;
+      return `<td class="px-3 py-2 text-right">${v ? _aiCostFmtUsd(v) : '<span class="text-gray-300">-</span>'}</td>`;
+    }).join('');
+    return `<tr class="border-b border-gray-50 hover:bg-violet-50/20">
+      <td class="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">${_aiCostPeriodFmt(p)}</td>
+      ${cells}
+      <td class="px-3 py-2 text-right font-bold text-violet-700">${_aiCostFmtUsd(total)}</td>
+    </tr>`;
+  }).join('');
+
+  // 당월 - 전월 증감 (마지막 두 기간 비교)
+  if (periods.length >= 2) {
+    const last = periods[periods.length - 1];
+    const prev = periods[periods.length - 2];
+    let totalDiff = 0;
+    const diffCells = licenses.map(l => {
+      const diff = (matrix[last][l] || 0) - (matrix[prev][l] || 0);
+      totalDiff += diff;
+      const cls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
+      return `<td class="px-3 py-2 text-right ${cls}">${diff ? (diff>0?'+':'') + _aiCostFmtUsd(diff) : '-'}</td>`;
+    }).join('');
+    foot.innerHTML = `<tr>
+      <td class="px-3 py-2">당월 - 전월</td>
+      ${diffCells}
+      <td class="px-3 py-2 text-right">${totalDiff ? (totalDiff>0?'+':'') + _aiCostFmtUsd(totalDiff) : '-'}</td>
+    </tr>`;
+  } else {
+    foot.innerHTML = '';
+  }
+}
+
+// 월별 비용대장 - 보고용 인쇄 (부사장 보고 등 깔끔한 인쇄 화면)
+function printAiCostReport() {
+  if (!filteredAiLicenseCosts.length) { showToast('인쇄할 데이터가 없습니다.', 'warning'); return; }
+
+  const { licenses, periods, matrix } = _buildAiCostPivot();
+
+  const licHeaderCells = licenses.map(l => `<th>${l}</th>`).join('');
+
+  let bodyRows = '';
+  periods.forEach(p => {
+    let total = 0;
+    const cells = licenses.map(l => {
+      const v = matrix[p][l] || 0; total += v;
+      return `<td class="num">${v ? _aiCostFmtUsd(v) : '-'}</td>`;
+    }).join('');
+    bodyRows += `<tr><td class="period">${_aiCostPeriodFmt(p)}</td>${cells}<td class="num total">${_aiCostFmtUsd(total)}</td></tr>`;
+  });
+
+  let momRow = '';
+  if (periods.length >= 2) {
+    const last = periods[periods.length - 1];
+    const prev = periods[periods.length - 2];
+    let totalDiff = 0;
+    const diffCells = licenses.map(l => {
+      const diff = (matrix[last][l] || 0) - (matrix[prev][l] || 0);
+      totalDiff += diff;
+      return `<td class="num">${diff ? (diff>0?'+':'') + _aiCostFmtUsd(diff) : '-'}</td>`;
+    }).join('');
+    momRow = `<tr class="mom-row"><td class="period">당월 - 전월</td>${diffCells}<td class="num total">${totalDiff>0?'+':''}${_aiCostFmtUsd(totalDiff)}</td></tr>`;
+  }
+
+  const fromEl = document.getElementById('aiCostFilterFrom');
+  const toEl   = document.getElementById('aiCostFilterTo');
+  const rangeText = (fromEl?.value || periods[0]) + ' ~ ' + (toEl?.value || periods[periods.length-1]);
+  const now = new Date();
+  const generatedText = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<title>AI 라이선스 월별 비용대장 보고</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; padding: 32px; color: #1f2937; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; }
+  thead th { background: #f3f4f6; font-weight: 700; }
+  td.period { text-align: left; font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; }
+  td.total { font-weight: 700; background: #f5f3ff; }
+  tr.mom-row td { background: #fffbeb; font-weight: 700; }
+  .footer-note { margin-top: 16px; font-size: 11px; color: #9ca3af; }
+  @media print {
+    body { padding: 10mm; }
+    @page { size: landscape; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+  <h1>AI 라이선스 월별 비용 보고</h1>
+  <div class="meta">조회 기간: ${rangeText} &nbsp;|&nbsp; 출력일시: ${generatedText} &nbsp;|&nbsp; 통화: USD</div>
+  <table>
+    <thead>
+      <tr><th>기간</th>${licHeaderCells}<th>월계</th></tr>
+    </thead>
+    <tbody>
+      ${bodyRows}
+      ${momRow}
+    </tbody>
+  </table>
+  <div class="footer-note">※ 본 보고서는 IT 통합 자산관리 시스템에서 자동 생성되었습니다.</div>
+  <script>window.onload = () => { window.print(); };</script>
+</body>
+</html>`;
+
+  const printWin = window.open('', '_blank');
+  if (!printWin) {
+    showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 팝업 차단을 해제해주세요.', 'error');
+    return;
+  }
+  printWin.document.write(html);
+  printWin.document.close();
+}
+
+// 월별 보고 피벗 – Excel 내보내기 (원본 엑셀과 동일 레이아웃)
+function exportAiCostPivotExcel() {
+  if (!filteredAiLicenseCosts.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); return; }
+
+  const { licenses, periods, matrix } = _buildAiCostPivot();
+
+  const headerRow = ['기간', ...licenses, '월계'];
+  const dataRows = periods.map(p => {
+    const vals = licenses.map(l => matrix[p][l] || 0);
+    const total = vals.reduce((s, v) => s + v, 0);
+    return [_aiCostPeriodFmt(p), ...vals, total];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '월별 보고');
+  XLSX.writeFile(wb, `AI라이선스월별비용보고_${Date.now()}.xlsx`);
+  showToast('Excel 파일이 다운로드되었습니다.', 'success');
 }
 
 // ============================================================
