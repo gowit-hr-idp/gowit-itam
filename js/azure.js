@@ -116,11 +116,11 @@ function renderAzCostByServiceChart() {
   if (!ctx) return;
   if (azCostByServiceChart) { azCostByServiceChart.destroy(); azCostByServiceChart = null; }
 
-  // 업로드된 리소스 비용을 서비스명 기준으로 합산 (최근 기준월)
+  // [연계] 서비스별 비용 분포 = 월별 보고(법인카드 결제 건) 서비스명 기준 합산
   const map = {};
-  dashAruLatest.forEach(r => {
-    const key = r.service_name || '기타';
-    map[key] = (map[key] || 0) + (Number(r.cost_krw) || 0);
+  allAzureCosts.forEach(c => {
+    const key = c.service_name || '기타';
+    map[key] = (map[key] || 0) + (Number(c.actual_cost_krw) || 0);
   });
   const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
   if (!sorted.length) return;
@@ -144,36 +144,46 @@ function renderAzCostByServiceChart() {
   });
 }
 
-// 서비스별 당월-전월 증감 표 (업로드된 리소스 비용 기준, 최근/직전 기준월)
+// [연계] 서비스별 당월-전월 증감 = 월별 보고(법인카드 결제 건) 기준
 function renderAzCostServiceMomTable() {
   const tbody = document.getElementById('azCostServiceMomBody');
   if (!tbody) return;
 
-  if (!dashAruLatest.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">업로드된 리소스 비용 데이터 없음</td></tr>`;
+  const periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
+  if (periods.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">데이터 없음</td></tr>`;
     return;
   }
+  const latest = periods[periods.length - 1];
+  const prev   = periods[periods.length - 2];
 
   const latestMap = {};
   const prevMap   = {};
-  dashAruLatest.forEach(r => { const k = r.service_name || '기타'; latestMap[k] = (latestMap[k] || 0) + (Number(r.cost_krw) || 0); });
-  dashAruPrev.forEach(r   => { const k = r.service_name || '기타'; prevMap[k]   = (prevMap[k]   || 0) + (Number(r.cost_krw) || 0); });
-  const hasPrev = dashAruPrev.length > 0;
+  allAzureCosts.forEach(c => {
+    const key = c.service_name || '기타';
+    if (c.period === latest) latestMap[key] = (latestMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
+    if (prev && c.period === prev) prevMap[key] = (prevMap[key] || 0) + (Number(c.actual_cost_krw) || 0);
+  });
 
   const services = [...new Set([...Object.keys(latestMap), ...Object.keys(prevMap)])]
     .sort((a, b) => (latestMap[b] || 0) - (latestMap[a] || 0));
+
+  if (!services.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-300">${latest} 데이터 없음</td></tr>`;
+    return;
+  }
 
   tbody.innerHTML = services.map(svc => {
     const cur  = latestMap[svc] || 0;
     const pv   = prevMap[svc]   || 0;
     const diff = cur - pv;
     const diffCls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
-    const diffTxt = hasPrev ? `${diff > 0 ? '+' : ''}₩${diff.toLocaleString()}` : '-';
+    const diffTxt = prev ? `${diff > 0 ? '+' : ''}₩${diff.toLocaleString()}` : '-';
     return `
       <tr class="border-b border-gray-50">
         <td class="py-1.5 text-gray-700">${svc}</td>
         <td class="py-1.5 text-right font-semibold text-gray-800">₩${cur.toLocaleString()}</td>
-        <td class="py-1.5 text-right text-gray-400">${hasPrev ? '₩'+pv.toLocaleString() : '-'}</td>
+        <td class="py-1.5 text-right text-gray-400">${prev ? '₩'+pv.toLocaleString() : '-'}</td>
         <td class="py-1.5 text-right ${diffCls}">${diffTxt}</td>
       </tr>`;
   }).join('');
