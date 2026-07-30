@@ -89,7 +89,6 @@
       </button>
       <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-dashboard"><i class="fas fa-chart-pie w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용 대시보드</span></a></li>
-        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-resources"><i class="fas fa-server w-4 text-center flex-shrink-0"></i><span class="sidebar-text">리소스 대장</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월별 비용대장</span></a></li>
         <li class="admin-only hidden"><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="azure-settings"><i class="fas fa-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">설정</span></a></li>
       </ul>
@@ -606,56 +605,6 @@
       </div>
     </section>
 
-    <!-- ===== Azure 리소스 대장 ===== -->
-    <section id="page-azure-resources" class="page-section hidden">
-      <!-- 필터 바 -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
-          <div class="flex-1 min-w-48">
-            <label class="text-xs font-semibold text-gray-600 block mb-1">검색</label>
-            <div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-            <input type="text" id="azResSearch" placeholder="리소스명, 그룹, 담당자..." class="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
-          </div>
-          <div class="min-w-44"><label class="text-xs font-semibold text-gray-600 block mb-1">서비스 구분</label><select id="azResFilterService" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option value="Azure">Azure</option><option value="Claude">Claude</option><option value="GoWorks">GoWorks</option><option value="SendGrid">SendGrid</option><option value="AzureFabric">Azure Fabric</option><option value="DataPortal">DataPortal</option><option value="기타">기타</option></select></div>
-          <div class="min-w-36"><label class="text-xs font-semibold text-gray-600 block mb-1">타입</label><select id="azResFilterType" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Virtual Machine</option><option>App Service</option><option>SQL Database</option><option>Storage Account</option><option>Key Vault</option><option>Container Registry</option><option>AKS</option><option>Function App</option><option>OpenAI</option><option>기타</option></select></div>
-          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">환경</label><select id="azResFilterEnv" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Production</option><option>Staging</option><option>Development</option><option>Test</option><option>Demo</option></select></div>
-          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="azResFilterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체</option><option>Running</option><option>Stopped</option><option>Deallocated</option></select></div>
-          <button onclick="applyAzureResFilter()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
-          <button onclick="resetAzureResFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
-        </div>
-      </div>
-      <!-- 테이블 -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <span id="azResCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
-          <div class="flex gap-2">
-            <button onclick="exportAzureResExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
-            <button onclick="openAzureResModal()" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 flex items-center gap-1"><i class="fas fa-plus"></i>리소스 등록</button>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <tr>
-                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="azres" data-sort-field="resource_name" onclick="sortTableHeader('azres','resource_name','string')">리소스명<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="azres" data-sort-field="service_group" onclick="sortTableHeader('azres','service_group','string')">서비스 구분<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="azres" data-sort-field="resource_type" onclick="sortTableHeader('azres','resource_type','string')">타입<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-left">환경</th>
-                <th class="px-4 py-3 text-left">리전</th>
-                <th class="px-4 py-3 text-left">리소스 그룹</th>
-                <th class="px-4 py-3 text-left">SKU</th>
-                <th class="px-4 py-3 text-right">월 비용(USD)</th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-blue-600" data-sort-table="azres" data-sort-field="monthly_cost_krw" onclick="sortTableHeader('azres','monthly_cost_krw','number')">월 비용(KRW)<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-left">담당자</th>
-                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="azres" data-sort-field="status" onclick="sortTableHeader('azres','status','string')">상태<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-center">관리</th>
-              </tr>
-            </thead>
-            <tbody id="azResTableBody"><tr><td colspan="12" class="text-center py-16 text-gray-400"><i class="fab fa-microsoft text-4xl block mb-3 opacity-20"></i>등록된 리소스가 없습니다.</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
 
     <!-- ===== AI 라이선스 - 배포 현황 (개인별 시트) ===== -->
     <section id="page-ai-seats" class="page-section hidden">
@@ -1075,77 +1024,6 @@
     </section>
 
   </main>
-</div>
-
-<!-- ========== 모달: Azure 리소스 등록/수정 ========== -->
-<div id="azureResModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-    <div class="flex items-center justify-between p-5 border-b border-gray-100">
-      <h2 id="azureResModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fab fa-microsoft text-blue-500"></i>Azure 리소스 등록</h2>
-      <button onclick="closeModal('azureResModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-    </div>
-    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <input type="hidden" id="azResEditId"/>
-      <div class="md:col-span-2"><label class="form-label">리소스 이름 *</label><input type="text" id="azr_resource_name" placeholder="예: gowit-prod-api" class="form-input" required/></div>
-      <!-- 서비스 구분 -->
-      <div><label class="form-label">서비스 구분 *</label>
-        <select id="azr_service_group" class="form-input" required>
-          <option value="">선택하세요</option>
-          <option value="Azure">Azure (Microsoft 클라우드)</option>
-          <option value="Claude">Claude (AI Framework)</option>
-          <option value="GoWorks">GoWorks 개발/구독관리</option>
-          <option value="SendGrid">SendGrid 메일 서비스</option>
-          <option value="AzureFabric">Azure Fabric (학습/데모/개발)</option>
-          <option value="DataPortal">DataPortal (학습/데모/개발)</option>
-          <option value="기타">기타</option>
-        </select>
-      </div>
-      <div><label class="form-label">리소스 타입 *</label>
-        <select id="azr_resource_type" class="form-input" required>
-          <option value="">선택하세요</option>
-          <option>Virtual Machine</option><option>App Service</option><option>SQL Database</option>
-          <option>Storage Account</option><option>Key Vault</option><option>Container Registry</option>
-          <option>AKS</option><option>Function App</option><option>Logic App</option>
-          <option>API Management</option><option>Cognitive Service</option><option>OpenAI</option>
-          <option>CDN</option><option>DNS Zone</option><option>VNet</option><option>Load Balancer</option><option>기타</option>
-        </select>
-      </div>
-      <div><label class="form-label">환경</label>
-        <select id="azr_environment" class="form-input">
-          <option value="">선택</option><option>Production</option><option>Staging</option><option>Development</option><option>Test</option><option>Demo</option>
-        </select>
-      </div>
-      <div><label class="form-label">구독(Subscription)</label><input type="text" id="azr_subscription" placeholder="구독 이름" class="form-input"/></div>
-      <div><label class="form-label">리소스 그룹</label><input type="text" id="azr_resource_group" placeholder="rg-gowit-prod" class="form-input"/></div>
-      <div><label class="form-label">리전</label>
-        <select id="azr_region" class="form-input">
-          <option value="">선택</option><option>Korea Central</option><option>Korea South</option>
-          <option>East Asia</option><option>Southeast Asia</option><option>Japan East</option>
-          <option>West US</option><option>East US</option><option>West Europe</option><option>기타</option>
-        </select>
-      </div>
-      <div><label class="form-label">SKU/플랜</label><input type="text" id="azr_sku" placeholder="예: Standard_B2s, P1v3" class="form-input"/></div>
-      <div><label class="form-label">상태</label>
-        <select id="azr_status" class="form-input">
-          <option value="Running">Running</option><option value="Stopped">Stopped</option>
-          <option value="Deallocated">Deallocated</option><option value="Provisioning">Provisioning</option>
-        </select>
-      </div>
-      <div><label class="form-label">월 예상 비용(USD)</label><input type="number" id="azr_monthly_cost" placeholder="0.00" class="form-input" step="0.01" min="0"/></div>
-      <div><label class="form-label">월 예상 비용(KRW)</label><input type="number" id="azr_monthly_cost_krw" placeholder="0" class="form-input" min="0"/></div>
-      <div><label class="form-label">담당자</label><input type="text" id="azr_owner" class="form-input" placeholder="담당자명"/></div>
-      <div><label class="form-label">담당 부서</label><input type="text" id="azr_department" class="form-input" placeholder="부서명"/></div>
-      <div><label class="form-label">생성일</label><input type="date" id="azr_created_date" class="form-input"/></div>
-      <div><label class="form-label">최근 검토일</label><input type="date" id="azr_last_reviewed" class="form-input"/></div>
-      <div class="md:col-span-2"><label class="form-label">용도/설명</label><textarea id="azr_purpose" rows="2" class="form-input resize-none" placeholder="예: GoWorks 구독 관리 API 서버, Production 환경"></textarea></div>
-      <div class="md:col-span-2"><label class="form-label">태그 (쉼표 구분)</label><input type="text" id="azr_tags" class="form-input" placeholder="예: prod, api, backend"/></div>
-      <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="azr_note" rows="2" class="form-input resize-none"></textarea></div>
-    </form>
-    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
-      <button onclick="saveAzureResource()" class="px-5 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
-      <button onclick="closeModal('azureResModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
-    </div>
-  </div>
 </div>
 
 <!-- ========== 모달: 카테고리 추가/수정 ========== -->
