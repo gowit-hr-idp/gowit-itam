@@ -103,7 +103,10 @@
         <i class="nav-group-arrow fas fa-chevron-right text-xs text-blue-400 transition-transform duration-200 sidebar-text"></i>
       </button>
       <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
-        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-licenses"><i class="fas fa-id-card w-4 text-center flex-shrink-0"></i><span class="sidebar-text">라이선스 현황</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-seats"><i class="fas fa-user-tag w-4 text-center flex-shrink-0"></i><span class="sidebar-text">배포 현황</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-dept-summary"><i class="fas fa-building w-4 text-center flex-shrink-0"></i><span class="sidebar-text">사업부별 비용집계</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-history"><i class="fas fa-history w-4 text-center flex-shrink-0"></i><span class="sidebar-text">갱신·회수 이력</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="ai-licenses"><i class="fas fa-id-card w-4 text-center flex-shrink-0"></i><span class="sidebar-text">라이선스 현황 (제품별)</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월 비용대장</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="ai-keys"><i class="fas fa-key w-4 text-center flex-shrink-0"></i><span class="sidebar-text">API 키 관리</span></a></li>
         <li class="admin-only hidden"><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="ai-settings"><i class="fas fa-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">설정</span></a></li>
@@ -654,6 +657,119 @@
       </div>
     </section>
 
+    <!-- ===== AI 라이선스 - 배포 현황 (개인별 시트) ===== -->
+    <section id="page-ai-seats" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="aiSeatSearchInput" placeholder="성명, 이메일, 목적..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-500"/></div></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">사업부</label><select id="aiSeatFilterDept" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-500"><option value="">전체</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">시트유형</label><select id="aiSeatFilterType" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-500"><option value="">전체</option><option>Standard</option><option>Premium</option></select></div>
+          <div class="min-w-28"><label class="text-xs font-semibold text-gray-600 block mb-1">상태</label><select id="aiSeatFilterStatus" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-violet-500"><option value="">전체</option><option>활성</option><option>만료</option><option>회수</option></select></div>
+          <button onclick="loadAiLicenseSeats()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-search"></i>조회</button>
+          <button onclick="resetAiSeatFilter()" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 flex items-center gap-1.5"><i class="fas fa-undo"></i>초기화</button>
+          <div class="ml-auto"><button onclick="openAiSeatModal()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5 font-medium"><i class="fas fa-plus"></i>시트 배포 등록</button></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <div class="bg-violet-50 border border-violet-100 rounded-xl p-4"><div class="text-xs text-violet-600 font-semibold mb-1">총 배포 시트</div><div id="aiSeatStatTotal" class="text-xl font-bold text-violet-800">0</div></div>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4"><div class="text-xs text-blue-600 font-semibold mb-1">Standard / Premium</div><div id="aiSeatStatTypes" class="text-xl font-bold text-blue-800">0 / 0</div></div>
+        <div class="bg-green-50 border border-green-100 rounded-xl p-4"><div class="text-xs text-green-600 font-semibold mb-1">이번달 총 비용(USD)</div><div id="aiSeatStatCost" class="text-xl font-bold text-green-800">$0</div></div>
+        <div class="bg-orange-50 border border-orange-100 rounded-xl p-4"><div class="text-xs text-orange-600 font-semibold mb-1">30일 내 만료</div><div id="aiSeatStatExpiring" class="text-xl font-bold text-orange-700">0</div></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="aiSeatCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="exportAiSeatExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-3 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="department" onclick="sortTableHeader('aiseat','department','string')">사업부<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="name" onclick="sortTableHeader('aiseat','name','string')">성명<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-left">직급</th>
+                <th class="px-3 py-3 text-left">이메일</th>
+                <th class="px-3 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="seat_type" onclick="sortTableHeader('aiseat','seat_type','string')">시트유형<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-left">배포구분</th>
+                <th class="px-3 py-3 text-left">배포목적</th>
+                <th class="px-3 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="expire_date" onclick="sortTableHeader('aiseat','expire_date','string')">만료예정일<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-center">갱신횟수</th>
+                <th class="px-3 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="status" onclick="sortTableHeader('aiseat','status','string')">상태<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-right cursor-pointer select-none hover:text-blue-600" data-sort-table="aiseat" data-sort-field="monthly_total" onclick="sortTableHeader('aiseat','monthly_total','number')">월합계(USD)<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-3 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="aiSeatTableBody"><tr><td colspan="11" class="text-center py-16 text-gray-400"><i class="fas fa-user-tag text-4xl block mb-3 opacity-20"></i>배포된 시트가 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 라이선스 - 사업부별 비용집계 ===== -->
+    <section id="page-ai-dept-summary" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div><label class="text-xs font-semibold text-gray-600 block mb-1">기준월</label><input type="month" id="aiDeptSummaryMonth" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"/></div>
+          <button onclick="renderAiDeptSummary()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-sync"></i>새로고침</button>
+          <p class="text-xs text-gray-400 pb-2">※ "배포 현황"의 활성 시트를 기준으로 자동 집계됩니다 (별도 입력 불필요)</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-building text-violet-500"></i>사업부별 시트 비용 집계</span>
+          <button onclick="exportAiDeptSummaryExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">사업부</th>
+                <th class="px-4 py-3 text-center">Standard 인원</th>
+                <th class="px-4 py-3 text-center">Premium 인원</th>
+                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
+                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
+                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
+                <th class="px-4 py-3 text-right">합계(USD)</th>
+              </tr>
+            </thead>
+            <tbody id="aiDeptSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
+            <tfoot id="aiDeptSummaryFoot" class="bg-violet-50 text-sm font-bold text-violet-800"></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 라이선스 - 갱신·회수 이력 ===== -->
+    <section id="page-ai-history" class="page-section hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="aiHistoryCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <button onclick="openAiHistoryModal()" class="text-xs px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 flex items-center gap-1 border border-violet-200"><i class="fas fa-plus"></i>이력 등록</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aihistory" data-sort-field="process_date" onclick="sortTableHeader('aihistory','process_date','string')">처리일<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="aihistory" data-sort-field="name" onclick="sortTableHeader('aihistory','name','string')">성명<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">사업부</th>
+                <th class="px-4 py-3 text-center">시트유형</th>
+                <th class="px-4 py-3 text-center">처리구분</th>
+                <th class="px-4 py-3 text-left">사유</th>
+                <th class="px-4 py-3 text-center">전 → 후 상태</th>
+                <th class="px-4 py-3 text-right">비용변동(USD)</th>
+                <th class="px-4 py-3 text-left">처리자</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="aiHistoryTableBody"><tr><td colspan="10" class="text-center py-16 text-gray-400"><i class="fas fa-history text-4xl block mb-3 opacity-20"></i>이력이 없습니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== AI 라이선스 관리 (독립 메뉴) ===== -->
     <section id="page-ai-licenses" class="page-section hidden">
       <div class="bg-violet-50 border border-violet-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
@@ -1155,6 +1271,68 @@
     <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
       <button onclick="saveAiLicenseKey()" class="px-5 py-2.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
       <button onclick="closeModal('aiKeyModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 시트 배포 등록/수정 ========== -->
+<div id="aiSeatModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="aiSeatModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-user-tag text-violet-500"></i>시트 배포 등록</h2>
+      <button onclick="closeModal('aiSeatModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="aiSeatEditId"/>
+      <div><label class="form-label">라이선스</label>
+        <select id="ais_license_name" class="form-input"><option value="">선택하세요</option></select>
+      </div>
+      <div><label class="form-label">사업부 *</label><input type="text" id="ais_department" class="form-input" required/></div>
+      <div><label class="form-label">성명 *</label><input type="text" id="ais_name" class="form-input" required/></div>
+      <div><label class="form-label">직급</label><input type="text" id="ais_title" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">이메일</label><input type="email" id="ais_email" placeholder="user@gowit.co.kr" class="form-input"/></div>
+      <div><label class="form-label">시트 유형 *</label><select id="ais_seat_type" class="form-input" required><option value="Standard">Standard</option><option value="Premium">Premium</option></select></div>
+      <div><label class="form-label">배포 구분</label><select id="ais_assign_type" class="form-input"><option value="관리자">관리자</option><option value="프로젝트(업무)">프로젝트(업무)</option><option value="개인">개인</option><option value="회사KPI">회사KPI</option></select></div>
+      <div class="md:col-span-2"><label class="form-label">배포 목적</label><input type="text" id="ais_purpose" placeholder="예: 구독관리 리엔지니어링" class="form-input"/></div>
+      <div><label class="form-label">배포일</label><input type="date" id="ais_assigned_date" class="form-input"/></div>
+      <div><label class="form-label">만료 예정일</label><input type="date" id="ais_expire_date" class="form-input"/></div>
+      <div><label class="form-label">갱신 횟수</label><input type="number" id="ais_renewal_count" min="0" class="form-input"/></div>
+      <div><label class="form-label">상태</label><select id="ais_status" class="form-input"><option value="활성">활성</option><option value="만료">만료</option><option value="회수">회수</option></select></div>
+      <div><label class="form-label">월 시트 비용(USD)</label><input type="number" id="ais_seat_cost_usd" step="0.01" min="0" class="form-input"/></div>
+      <div><label class="form-label">추가 크레딧(USD)</label><input type="number" id="ais_extra_credit_usd" step="0.01" min="0" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><input type="text" id="ais_note" class="form-input"/></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAiLicenseSeat()" class="px-5 py-2.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('aiSeatModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 모달: 갱신/회수 이력 등록/수정 ========== -->
+<div id="aiHistoryModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 id="aiHistoryModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-history text-violet-500"></i>이력 등록</h2>
+      <button onclick="closeModal('aiHistoryModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <form class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="aiHistoryEditId"/>
+      <div><label class="form-label">처리일 *</label><input type="date" id="aih_process_date" class="form-input" required/></div>
+      <div><label class="form-label">성명 *</label><input type="text" id="aih_name" class="form-input" required/></div>
+      <div><label class="form-label">사업부</label><input type="text" id="aih_department" class="form-input"/></div>
+      <div><label class="form-label">시트유형</label><select id="aih_seat_type" class="form-input"><option value="">선택안함</option><option value="Standard">Standard</option><option value="Premium">Premium</option></select></div>
+      <div><label class="form-label">처리 구분 *</label><select id="aih_process_type" class="form-input" required><option value="신규배포">신규배포</option><option value="갱신">갱신</option><option value="회수">회수</option><option value="변경">변경</option></select></div>
+      <div><label class="form-label">비용 변동(USD)</label><input type="number" id="aih_cost_change_usd" step="0.01" class="form-input" placeholder="증가는 +, 감소는 -"/></div>
+      <div><label class="form-label">처리 전 상태</label><input type="text" id="aih_status_before" class="form-input"/></div>
+      <div><label class="form-label">처리 후 상태</label><input type="text" id="aih_status_after" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">사유</label><input type="text" id="aih_reason" class="form-input"/></div>
+      <div><label class="form-label">처리자</label><input type="text" id="aih_handler" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><input type="text" id="aih_note" class="form-input"/></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveAiLicenseHistory()" class="px-5 py-2.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('aiHistoryModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
     </div>
   </div>
 </div>
