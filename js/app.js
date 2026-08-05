@@ -653,12 +653,7 @@ async function showAssetDetail(id) {
   document.getElementById('assetDetailContent').innerHTML = `
     <div class="detail-section" style="border-color:#ddd6fe;background:#faf5ff">
       <h4 style="color:#7c3aed"><i class="fas fa-qrcode mr-1"></i>자산 식별 정보 (자산번호 · 장비명 · 시리얼 · 구매일)</h4>
-      <div class="grid grid-cols-2 gap-x-4">
-        <div class="detail-row"><span class="detail-label">자산번호</span><span class="detail-value font-mono font-bold text-violet-700">${asset.asset_no || '-'}</span></div>
-        <div class="detail-row"><span class="detail-label">장비명</span><span class="detail-value font-semibold">${asset.asset_name || '-'}</span></div>
-        <div class="detail-row"><span class="detail-label">시리얼</span><span class="detail-value font-mono text-xs">${asset.serial_no || '-'}</span></div>
-        <div class="detail-row"><span class="detail-label">구매일</span><span class="detail-value">${asset.purchase_date || '-'}</span></div>
-      </div>
+      <div class="detail-value font-mono font-semibold text-violet-700" style="word-break:break-all;font-size:0.95rem">${[asset.asset_no || '-', asset.asset_name || '-', asset.serial_no || '-', asset.purchase_date || '-'].join('-')}</div>
     </div>
     <div class="detail-section">
       <h4><i class="fas fa-tag mr-1"></i>기본 정보</h4>
