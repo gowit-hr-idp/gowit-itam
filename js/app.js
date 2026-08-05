@@ -523,7 +523,6 @@ function renderAssetTable() {
         <div class="flex gap-1 justify-center flex-wrap">
           <button class="action-btn btn-view" onclick="showAssetDetail('${a.id}')"><i class="fas fa-eye"></i></button>
           <button class="action-btn btn-edit" onclick="openEditModal('${a.id}')"><i class="fas fa-edit"></i></button>
-          <button class="action-btn btn-qr" onclick="printAssetQR('${a.id}')" title="QR 라벨 인쇄"><i class="fas fa-qrcode"></i></button>
           ${getActionButtons(a)}
         </div>
       </td>
@@ -531,101 +530,6 @@ function renderAssetTable() {
   `}).join('');
 
   renderPagination(total, totalPages);
-}
-
-// ============================================================
-// QR 라벨 인쇄 (Brother 라벨프린터 등으로 출력)
-// QR 내용 순서: 자산번호 - 장비명 - 시리얼 - 구매일
-// ============================================================
-function buildAssetQRText(a) {
-  return [a.asset_no || '', a.asset_name || '', a.serial_no || '', a.purchase_date || ''].join(' - ');
-}
-
-function printAssetQR(id) {
-  const a = allAssets.find(x => x.id === id);
-  if (!a) { showToast('자산 정보를 찾을 수 없습니다.', 'error'); return; }
-
-  const qrText = buildAssetQRText(a);
-
-  // QR 이미지 dataURL 또는 외부 이미지 URL 확보
-  let qrSrc = '';
-  try {
-    if (typeof qrcode === 'function') {
-      const qr = qrcode(0, 'M');
-      qr.addData(qrText);
-      qr.make();
-      // 셀 크기 6px로 렌더된 img 태그에서 src 추출
-      const imgTag = qr.createImgTag(6, 8);
-      const m = imgTag.match(/src="([^"]+)"/);
-      if (m) qrSrc = m[1];
-    }
-  } catch (e) {
-    console.warn('QR 로컬 생성 실패, 외부 API로 대체:', e);
-  }
-
-  // 라이브러리 실패 시 외부 QR 이미지 API로 대체
-  if (!qrSrc) {
-    qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(qrText);
-  }
-
-  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><title>QR 라벨 - ${a.asset_no||''}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Malgun Gothic','Noto Sans KR',sans-serif; color: #111; }
-  .label {
-    width: 24mm; height: 24mm; padding: 1mm;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center;
-  }
-  .label img { width: 15mm; height: 15mm; display: block; }
-  .assetno { font-size: 6pt; font-weight: 700; margin-top: 0.5mm; line-height: 1.1; word-break: break-all; }
-  @media print {
-    @page { size: 24mm 24mm; margin: 0; }
-    body { width: 24mm; height: 24mm; }
-  }
-</style></head><body>
-  <div class="label">
-    <img src="${qrSrc}" alt="QR"/>
-    <div class="assetno">${a.asset_no || '-'}</div>
-  </div>
-  <script>
-    window.onload = function() {
-      var img = document.querySelector('img');
-      if (img && !img.complete) { img.onload = function(){ window.print(); }; img.onerror = function(){ window.print(); }; }
-      else { window.print(); }
-    };
-  <\/script>
-</body></html>`;
-
-  const win = window.open('', '_blank', 'width=360,height=360');
-  if (!win) { showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 브라우저 주소창 오른쪽의 팝업 차단 아이콘을 눌러 허용해주세요.', 'error'); return; }
-  win.document.write(html);
-  win.document.close();
-}
-
-// QR 라벨용 CSV 내보내기 (P-touch Editor의 DB 연결/CSV 병합 기능으로 대량 출력 시 사용)
-function exportAssetQRCsv() {
-  const list = filteredAssets.length ? filteredAssets : allAssets;
-  if (!list.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
-  const headers = ['자산번호','장비명','시리얼','구매일','QR내용'];
-  const rows = list.map(a => [
-    a.asset_no||'', a.asset_name||'', a.serial_no||'', a.purchase_date||'', buildAssetQRText(a)
-  ]);
-  if (typeof XLSX !== 'undefined') {
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    // BOM 추가 (P-touch/Excel 한글 깨짐 방지)
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `QR라벨용_자산목록_${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showToast('QR 라벨용 CSV가 다운로드되었습니다. P-touch Editor에서 불러오세요.', 'success');
-  } else {
-    showToast('CSV 내보내기를 사용할 수 없습니다.', 'error');
-  }
 }
 
 // CPU/MEM/SSD 단요 표시 텍스트 빌드
@@ -747,6 +651,15 @@ async function showAssetDetail(id) {
     </div>` : '');
 
   document.getElementById('assetDetailContent').innerHTML = `
+    <div class="detail-section" style="border-color:#ddd6fe;background:#faf5ff">
+      <h4 style="color:#7c3aed"><i class="fas fa-qrcode mr-1"></i>자산 식별 정보 (자산번호 · 장비명 · 시리얼 · 구매일)</h4>
+      <div class="grid grid-cols-2 gap-x-4">
+        <div class="detail-row"><span class="detail-label">자산번호</span><span class="detail-value font-mono font-bold text-violet-700">${asset.asset_no || '-'}</span></div>
+        <div class="detail-row"><span class="detail-label">장비명</span><span class="detail-value font-semibold">${asset.asset_name || '-'}</span></div>
+        <div class="detail-row"><span class="detail-label">시리얼</span><span class="detail-value font-mono text-xs">${asset.serial_no || '-'}</span></div>
+        <div class="detail-row"><span class="detail-label">구매일</span><span class="detail-value">${asset.purchase_date || '-'}</span></div>
+      </div>
+    </div>
     <div class="detail-section">
       <h4><i class="fas fa-tag mr-1"></i>기본 정보</h4>
       <div class="grid grid-cols-2 gap-x-4">
