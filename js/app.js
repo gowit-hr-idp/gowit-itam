@@ -544,63 +544,63 @@ function buildAssetQRText(a) {
 function printAssetQR(id) {
   const a = allAssets.find(x => x.id === id);
   if (!a) { showToast('자산 정보를 찾을 수 없습니다.', 'error'); return; }
-  if (typeof QRCode === 'undefined') { showToast('QR 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.', 'error'); return; }
 
   const qrText = buildAssetQRText(a);
 
-  // 화면 밖 임시 컨테이너에 QR 생성 → 이미지 추출
-  const tmp = document.createElement('div');
-  tmp.style.position = 'fixed';
-  tmp.style.left = '-9999px';
-  document.body.appendChild(tmp);
-  // eslint-disable-next-line no-new
-  new QRCode(tmp, { text: qrText, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  // QR 이미지 dataURL 또는 외부 이미지 URL 확보
+  let qrSrc = '';
+  try {
+    if (typeof qrcode === 'function') {
+      const qr = qrcode(0, 'M');
+      qr.addData(qrText);
+      qr.make();
+      // 셀 크기 6px로 렌더된 img 태그에서 src 추출
+      const imgTag = qr.createImgTag(6, 8);
+      const m = imgTag.match(/src="([^"]+)"/);
+      if (m) qrSrc = m[1];
+    }
+  } catch (e) {
+    console.warn('QR 로컬 생성 실패, 외부 API로 대체:', e);
+  }
 
-  // QRCode.js는 canvas 또는 img로 렌더 - 잠깐 후 dataURL 추출
-  setTimeout(() => {
-    let dataUrl = '';
-    const canvas = tmp.querySelector('canvas');
-    const img = tmp.querySelector('img');
-    if (canvas) dataUrl = canvas.toDataURL('image/png');
-    else if (img && img.src) dataUrl = img.src;
-    document.body.removeChild(tmp);
+  // 라이브러리 실패 시 외부 QR 이미지 API로 대체
+  if (!qrSrc) {
+    qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(qrText);
+  }
 
-    if (!dataUrl) { showToast('QR 생성에 실패했습니다.', 'error'); return; }
-
-    const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><title>QR 라벨 - ${a.asset_no||''}</title>
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><title>QR 라벨 - ${a.asset_no||''}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Malgun Gothic','Noto Sans KR',sans-serif; color: #111; }
   .label {
-    width: 62mm; padding: 3mm;
-    display: flex; align-items: center; gap: 3mm;
+    width: 24mm; height: 24mm; padding: 1mm;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
   }
-  .label img { width: 24mm; height: 24mm; flex-shrink: 0; }
-  .info { font-size: 9pt; line-height: 1.4; word-break: break-all; }
-  .info .assetno { font-size: 11pt; font-weight: 700; margin-bottom: 1mm; }
-  .info .row { color: #333; }
+  .label img { width: 15mm; height: 15mm; display: block; }
+  .assetno { font-size: 6pt; font-weight: 700; margin-top: 0.5mm; line-height: 1.1; word-break: break-all; }
   @media print {
-    @page { size: 62mm auto; margin: 0; }
-    body { width: 62mm; }
+    @page { size: 24mm 24mm; margin: 0; }
+    body { width: 24mm; height: 24mm; }
   }
 </style></head><body>
   <div class="label">
-    <img src="${dataUrl}" alt="QR"/>
-    <div class="info">
-      <div class="assetno">${a.asset_no || '-'}</div>
-      <div class="row">${a.asset_name || '-'}</div>
-      <div class="row">S/N: ${a.serial_no || '-'}</div>
-      <div class="row">구매일: ${a.purchase_date || '-'}</div>
-    </div>
+    <img src="${qrSrc}" alt="QR"/>
+    <div class="assetno">${a.asset_no || '-'}</div>
   </div>
-  <script>window.onload = () => { window.print(); };<\/script>
+  <script>
+    window.onload = function() {
+      var img = document.querySelector('img');
+      if (img && !img.complete) { img.onload = function(){ window.print(); }; img.onerror = function(){ window.print(); }; }
+      else { window.print(); }
+    };
+  <\/script>
 </body></html>`;
 
-    const win = window.open('', '_blank', 'width=400,height=300');
-    if (!win) { showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 팝업 차단을 해제해주세요.', 'error'); return; }
-    win.document.write(html);
-    win.document.close();
-  }, 120);
+  const win = window.open('', '_blank', 'width=360,height=360');
+  if (!win) { showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 브라우저 주소창 오른쪽의 팝업 차단 아이콘을 눌러 허용해주세요.', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // QR 라벨용 CSV 내보내기 (P-touch Editor의 DB 연결/CSV 병합 기능으로 대량 출력 시 사용)
