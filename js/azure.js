@@ -59,20 +59,12 @@ async function renderAzureDashboard() {
     const latestCostKrw = latestPeriod ? allAzureCosts.filter(c => c.period === latestPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const prevCostKrw   = prevPeriod   ? allAzureCosts.filter(c => c.period === prevPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const momDiff       = latestCostKrw - prevCostKrw;
-
-    // 업로드된 리소스 비용 명세 연동 (최근/직전 기준월)
-    const aruPeriods = await _aruDistinctPeriods();
-    dashAruLatestPeriod = aruPeriods[aruPeriods.length - 1] || null;
-    dashAruPrevPeriod   = aruPeriods[aruPeriods.length - 2] || null;
-    dashAruLatest = dashAruLatestPeriod ? await _aruFetchByPeriod(dashAruLatestPeriod) : [];
-    dashAruPrev   = dashAruPrevPeriod   ? await _aruFetchByPeriod(dashAruPrevPeriod)   : [];
-    const aruSvcCount = new Set(dashAruLatest.map(r => r.service_name || '기타')).size;
-    const aruCostTotal = dashAruLatest.reduce((s, r) => s + (Number(r.cost_krw) || 0), 0);
+    const runningCount  = allAzureResources.filter(r => r.status === 'Running').length;
 
     setEl('az-stat-total-cost',   '₩' + totalCostKrw.toLocaleString());
     setEl('az-stat-total-period', latestPeriod ? `최근월(${latestPeriod}) ₩${latestCostKrw.toLocaleString()}` : '데이터 없음');
-    setEl('az-stat-resources',    dashAruLatest.length);
-    setEl('az-stat-resources-running', dashAruLatestPeriod ? `${dashAruLatestPeriod} · ${aruSvcCount}개 서비스 · ₩${Math.round(aruCostTotal).toLocaleString()}` : '업로드 데이터 없음');
+    setEl('az-stat-resources',    allAzureResources.length);
+    setEl('az-stat-resources-running', `Running ${runningCount}개`);
 
     if (periods.length >= 2) {
       const sign = momDiff > 0 ? '+' : '';
@@ -86,7 +78,7 @@ async function renderAzureDashboard() {
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
     renderAzCostServiceMomTable();
-    renderAruCategorySummary();
+    renderAzResourceGroupSummary();
 
     // ── 최근 비용 내역 ──
     const tbody = document.getElementById('azureRecentCostBody');
@@ -116,7 +108,7 @@ function renderAzCostByServiceChart() {
   if (!ctx) return;
   if (azCostByServiceChart) { azCostByServiceChart.destroy(); azCostByServiceChart = null; }
 
-  // [연계] 서비스별 비용 분포 = 월별 보고(법인카드 결제 건) 서비스명 기준 합산
+  // 서비스별 KRW 합산
   const map = {};
   allAzureCosts.forEach(c => {
     const key = c.service_name || '기타';
@@ -144,7 +136,7 @@ function renderAzCostByServiceChart() {
   });
 }
 
-// [연계] 서비스별 당월-전월 증감 = 월별 보고(법인카드 결제 건) 기준
+// 서비스(품의서)별 당월-전월 증감 표 (월별 비용대장 피벗과 동일한 집계 기준 사용)
 function renderAzCostServiceMomTable() {
   const tbody = document.getElementById('azCostServiceMomBody');
   if (!tbody) return;
@@ -157,6 +149,7 @@ function renderAzCostServiceMomTable() {
   const latest = periods[periods.length - 1];
   const prev   = periods[periods.length - 2];
 
+  // 서비스별 당월/전월 합계 (allAzureCosts 기준 = 월별 비용대장과 동일 데이터)
   const latestMap = {};
   const prevMap   = {};
   allAzureCosts.forEach(c => {
@@ -924,7 +917,6 @@ async function loadAiLicenseCosts() {
     });
 
     renderAiCostTable();
-    renderAiCostPivot();
   } catch (e) {
     showToast('AI 라이선스 비용 로드 실패: ' + e.message, 'error');
   }
@@ -1065,196 +1057,6 @@ function exportAiCostExcel() {
   } else {
     showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
   }
-}
-
-// ============================================================
-// AI 라이선스 - 월별 보고 피벗 (라이선스별 × 월, Azure 월별 비용대장과 동일 구조)
-// ============================================================
-const _aiCostFmtUsd = v => '$' + (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-const _aiCostRowTotal = c => (Number(c.seat_cost_usd)||0) + (Number(c.additional_cost_usd)||0);
-const _aiCostPeriodFmt = p => (p||'').replace(/^(\d{4})-(\d{2})$/, (_, y, m) => `${y}년 ${parseInt(m)}월`);
-
-// filteredAiLicenseCosts -> { licenses:[], periods:[], matrix:{period:{license:합계}} }
-function _buildAiCostPivot() {
-  const licenses = [];
-  filteredAiLicenseCosts.forEach(c => {
-    const l = c.license_name || '기타';
-    if (!licenses.includes(l)) licenses.push(l);
-  });
-  const periods = [...new Set(filteredAiLicenseCosts.map(c => c.period).filter(Boolean))].sort();
-  const matrix = {};
-  periods.forEach(p => { matrix[p] = {}; licenses.forEach(l => matrix[p][l] = 0); });
-  filteredAiLicenseCosts.forEach(c => {
-    const p = c.period; if (!p || !matrix[p]) return;
-    const l = c.license_name || '기타';
-    matrix[p][l] = (matrix[p][l] || 0) + _aiCostRowTotal(c);
-  });
-  return { licenses, periods, matrix };
-}
-
-function renderAiCostPivot() {
-  const head = document.getElementById('aiCostPivotHead');
-  const body = document.getElementById('aiCostPivotBody');
-  const foot = document.getElementById('aiCostPivotFoot');
-  if (!head || !body || !foot) return;
-
-  if (!filteredAiLicenseCosts.length) {
-    head.innerHTML = '';
-    body.innerHTML = `<tr><td class="text-center py-16 text-gray-400">비용 데이터가 없습니다.</td></tr>`;
-    foot.innerHTML = '';
-    return;
-  }
-
-  const { licenses, periods, matrix } = _buildAiCostPivot();
-
-  // 헤더 (기간 | 라이선스... | 월계)
-  let headRow = '<tr><th class="px-3 py-2 text-left border-b border-gray-100">기간</th>';
-  licenses.forEach(l => { headRow += `<th class="px-3 py-2 text-right border-b border-gray-100 whitespace-nowrap">${l}</th>`; });
-  headRow += '<th class="px-3 py-2 text-center border-b border-gray-100">월계</th></tr>';
-  head.innerHTML = headRow;
-
-  // 바디
-  body.innerHTML = periods.map(p => {
-    let total = 0;
-    const cells = licenses.map(l => {
-      const v = matrix[p][l] || 0; total += v;
-      return `<td class="px-3 py-2 text-right">${v ? _aiCostFmtUsd(v) : '<span class="text-gray-300">-</span>'}</td>`;
-    }).join('');
-    return `<tr class="border-b border-gray-50 hover:bg-violet-50/20">
-      <td class="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">${_aiCostPeriodFmt(p)}</td>
-      ${cells}
-      <td class="px-3 py-2 text-right font-bold text-violet-700">${_aiCostFmtUsd(total)}</td>
-    </tr>`;
-  }).join('');
-
-  // 당월 - 전월 증감 (마지막 두 기간 비교)
-  if (periods.length >= 2) {
-    const last = periods[periods.length - 1];
-    const prev = periods[periods.length - 2];
-    let totalDiff = 0;
-    const diffCells = licenses.map(l => {
-      const diff = (matrix[last][l] || 0) - (matrix[prev][l] || 0);
-      totalDiff += diff;
-      const cls = diff > 0 ? 'text-red-600' : diff < 0 ? 'text-blue-600' : 'text-gray-400';
-      return `<td class="px-3 py-2 text-right ${cls}">${diff ? (diff>0?'+':'') + _aiCostFmtUsd(diff) : '-'}</td>`;
-    }).join('');
-    foot.innerHTML = `<tr>
-      <td class="px-3 py-2">당월 - 전월</td>
-      ${diffCells}
-      <td class="px-3 py-2 text-right">${totalDiff ? (totalDiff>0?'+':'') + _aiCostFmtUsd(totalDiff) : '-'}</td>
-    </tr>`;
-  } else {
-    foot.innerHTML = '';
-  }
-}
-
-// 월별 비용대장 - 보고용 인쇄 (부사장 보고 등 깔끔한 인쇄 화면)
-function printAiCostReport() {
-  if (!filteredAiLicenseCosts.length) { showToast('인쇄할 데이터가 없습니다.', 'warning'); return; }
-
-  const { licenses, periods, matrix } = _buildAiCostPivot();
-
-  const licHeaderCells = licenses.map(l => `<th>${l}</th>`).join('');
-
-  let bodyRows = '';
-  periods.forEach(p => {
-    let total = 0;
-    const cells = licenses.map(l => {
-      const v = matrix[p][l] || 0; total += v;
-      return `<td class="num">${v ? _aiCostFmtUsd(v) : '-'}</td>`;
-    }).join('');
-    bodyRows += `<tr><td class="period">${_aiCostPeriodFmt(p)}</td>${cells}<td class="num total">${_aiCostFmtUsd(total)}</td></tr>`;
-  });
-
-  let momRow = '';
-  if (periods.length >= 2) {
-    const last = periods[periods.length - 1];
-    const prev = periods[periods.length - 2];
-    let totalDiff = 0;
-    const diffCells = licenses.map(l => {
-      const diff = (matrix[last][l] || 0) - (matrix[prev][l] || 0);
-      totalDiff += diff;
-      return `<td class="num">${diff ? (diff>0?'+':'') + _aiCostFmtUsd(diff) : '-'}</td>`;
-    }).join('');
-    momRow = `<tr class="mom-row"><td class="period">당월 - 전월</td>${diffCells}<td class="num total">${totalDiff>0?'+':''}${_aiCostFmtUsd(totalDiff)}</td></tr>`;
-  }
-
-  const fromEl = document.getElementById('aiCostFilterFrom');
-  const toEl   = document.getElementById('aiCostFilterTo');
-  const rangeText = (fromEl?.value || periods[0]) + ' ~ ' + (toEl?.value || periods[periods.length-1]);
-  const now = new Date();
-  const generatedText = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-  const html = `
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8"/>
-<title>AI 라이선스 월별 비용대장 보고</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; padding: 32px; color: #1f2937; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .meta { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; }
-  thead th { background: #f3f4f6; font-weight: 700; }
-  td.period { text-align: left; font-weight: 600; white-space: nowrap; }
-  td.num { text-align: right; }
-  td.total { font-weight: 700; background: #f5f3ff; }
-  tr.mom-row td { background: #fffbeb; font-weight: 700; }
-  .footer-note { margin-top: 16px; font-size: 11px; color: #9ca3af; }
-  @media print {
-    body { padding: 10mm; }
-    @page { size: landscape; margin: 10mm; }
-  }
-</style>
-</head>
-<body>
-  <h1>AI 라이선스 월별 비용 보고</h1>
-  <div class="meta">조회 기간: ${rangeText} &nbsp;|&nbsp; 출력일시: ${generatedText} &nbsp;|&nbsp; 통화: USD</div>
-  <table>
-    <thead>
-      <tr><th>기간</th>${licHeaderCells}<th>월계</th></tr>
-    </thead>
-    <tbody>
-      ${bodyRows}
-      ${momRow}
-    </tbody>
-  </table>
-  <div class="footer-note">※ 본 보고서는 IT 통합 자산관리 시스템에서 자동 생성되었습니다.</div>
-  <script>window.onload = () => { window.print(); };</script>
-</body>
-</html>`;
-
-  const printWin = window.open('', '_blank');
-  if (!printWin) {
-    showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 팝업 차단을 해제해주세요.', 'error');
-    return;
-  }
-  printWin.document.write(html);
-  printWin.document.close();
-}
-
-// 월별 보고 피벗 – Excel 내보내기 (원본 엑셀과 동일 레이아웃)
-function exportAiCostPivotExcel() {
-  if (!filteredAiLicenseCosts.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
-  if (typeof XLSX === 'undefined') { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); return; }
-
-  const { licenses, periods, matrix } = _buildAiCostPivot();
-
-  const headerRow = ['기간', ...licenses, '월계'];
-  const dataRows = periods.map(p => {
-    const vals = licenses.map(l => matrix[p][l] || 0);
-    const total = vals.reduce((s, v) => s + v, 0);
-    return [_aiCostPeriodFmt(p), ...vals, total];
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '월별 보고');
-  XLSX.writeFile(wb, `AI라이선스월별비용보고_${Date.now()}.xlsx`);
-  showToast('Excel 파일이 다운로드되었습니다.', 'success');
 }
 
 // ============================================================
@@ -1589,216 +1391,177 @@ function exportAiSeatExcel() {
 // ============================================================
 // AI 라이선스 - 사업부별 비용집계 (배포 현황 기준 자동 집계)
 // ============================================================
-// 활성 시트를 임의의 키(사업부/배포목적 등)로 집계
-function aggregateAiSeats(active, keyFn) {
-  const groups = {}; // { key: { std, prem, stdCost, premCost, extra } }
+// 활성 시트를 특정 키(사업부 또는 배포구분)로 묶어서 집계
+function aggregateAiSeats(keyField) {
+  const active = allAiLicenseSeats.filter(s => s.status === '활성');
+  const groups = {};
   active.forEach(s => {
-    const k = (keyFn(s) || '').toString().trim() || '기타';
-    if (!groups[k]) groups[k] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
+    const key = s[keyField] || '기타';
+    if (!groups[key]) groups[key] = { std: 0, prem: 0, stdCost: 0, premCost: 0, extra: 0 };
     const cost = Number(s.seat_cost_usd) || 0;
-    if (s.seat_type === 'Premium') { groups[k].prem += 1; groups[k].premCost += cost; }
-    else { groups[k].std += 1; groups[k].stdCost += cost; }
-    groups[k].extra += Number(s.extra_credit_usd) || 0;
+    if (s.seat_type === 'Premium') { groups[key].prem += 1; groups[key].premCost += cost; }
+    else { groups[key].std += 1; groups[key].stdCost += cost; }
+    groups[key].extra += Number(s.extra_credit_usd) || 0;
   });
-  return groups;
-}
-
-const _aiFmtUsd = v => '$' + (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-
-// 집계 결과를 특정 tbody/tfoot에 렌더 (정렬 지원)
-const _aiSummaryState = {
-  dept:    { groups: null, field: 'total', dir: 'desc', bodyId: 'aiDeptSummaryBody',    footId: 'aiDeptSummaryFoot' },
-  purpose: { groups: null, field: 'total', dir: 'desc', bodyId: 'aiPurposeSummaryBody', footId: 'aiPurposeSummaryFoot' },
-};
-
-function _aiSummaryRows(groups) {
-  return Object.keys(groups).map(k => {
-    const g = groups[k];
-    return { key: k, std: g.std, prem: g.prem, stdCost: g.stdCost, premCost: g.premCost, extra: g.extra, total: g.stdCost + g.premCost + g.extra };
+  const keys = Object.keys(groups).sort((a, b) => {
+    const tA = groups[a].stdCost + groups[a].premCost + groups[a].extra;
+    const tB = groups[b].stdCost + groups[b].premCost + groups[b].extra;
+    return tB - tA;
   });
+  return { groups, keys };
 }
 
-// 헤더 클릭 → 정렬 (같은 열 다시 클릭 시 방향 토글)
-function sortAiSummary(tableKey, field) {
-  const st = _aiSummaryState[tableKey];
-  if (!st || !st.groups) return;
-  if (st.field === field) st.dir = st.dir === 'asc' ? 'desc' : 'asc';
-  else { st.field = field; st.dir = (field === 'key') ? 'asc' : 'desc'; }
-  renderAiSummaryTable(tableKey);
-}
+const _fmtUsd = v => '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function _updateAiSortIcons(tbody, st) {
-  const table = tbody.closest('table');
-  if (!table) return;
-  table.querySelectorAll('thead th[data-field]').forEach(th => {
-    const ico = th.querySelector('.ai-sort-ico');
-    if (!ico) return;
-    if (th.getAttribute('data-field') === st.field) {
-      ico.className = `ai-sort-ico fas ${st.dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} text-violet-500 ml-1`;
-    } else {
-      ico.className = 'ai-sort-ico fas fa-sort text-gray-300 ml-1';
-    }
-  });
-}
-
-function renderAiSummaryTable(tableKey) {
-  const st = _aiSummaryState[tableKey];
-  if (!st) return;
-  const tbody = document.getElementById(st.bodyId);
-  const tfoot = document.getElementById(st.footId);
+// 집계 결과를 표(tbody/tfoot)에 렌더
+function renderAiSummaryTable(keyField, bodyId, footId, emptyLabel) {
+  const tbody = document.getElementById(bodyId);
+  const tfoot = document.getElementById(footId);
   if (!tbody) return;
 
-  if (!st.groups || !Object.keys(st.groups).length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-gray-400">활성 상태인 배포 시트가 없습니다.</td></tr>';
+  const { groups, keys } = aggregateAiSeats(keyField);
+  if (!keys.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-gray-400">${emptyLabel}</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
     return;
   }
 
-  const rows = _aiSummaryRows(st.groups);
-  const f = st.field, dir = st.dir === 'asc' ? 1 : -1;
-  rows.sort((a, b) => {
-    if (f === 'key') return dir * String(a.key).localeCompare(String(b.key), 'ko');
-    return dir * (((a[f]) || 0) - ((b[f]) || 0));
-  });
-
-  let gStd=0, gPrem=0, gStdC=0, gPremC=0, gExtra=0;
-  tbody.innerHTML = rows.map(r => {
-    gStd += r.std; gPrem += r.prem; gStdC += r.stdCost; gPremC += r.premCost; gExtra += r.extra;
+  let gStd=0, gPrem=0, gStdCost=0, gPremCost=0, gExtra=0;
+  tbody.innerHTML = keys.map(k => {
+    const g = groups[k];
+    const total = g.stdCost + g.premCost + g.extra;
+    gStd += g.std; gPrem += g.prem; gStdCost += g.stdCost; gPremCost += g.premCost; gExtra += g.extra;
     return `
       <tr class="border-b border-gray-50 hover:bg-violet-50/20">
-        <td class="px-4 py-2.5 font-medium text-gray-700">${r.key}</td>
-        <td class="px-4 py-2.5 text-center">${r.std}</td>
-        <td class="px-4 py-2.5 text-center">${r.prem}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.stdCost)}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.premCost)}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${_aiFmtUsd(r.extra)}</td>
-        <td class="px-4 py-2.5 text-right font-bold text-violet-700">${_aiFmtUsd(r.total)}</td>
+        <td class="px-4 py-2.5 font-medium text-gray-700">${k}</td>
+        <td class="px-4 py-2.5 text-center">${g.std}</td>
+        <td class="px-4 py-2.5 text-center">${g.prem}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_fmtUsd(g.stdCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_fmtUsd(g.premCost)}</td>
+        <td class="px-4 py-2.5 text-right text-gray-600">${_fmtUsd(g.extra)}</td>
+        <td class="px-4 py-2.5 text-right font-bold text-violet-700">${_fmtUsd(total)}</td>
       </tr>`;
   }).join('');
 
-  const grand = gStdC + gPremC + gExtra;
   if (tfoot) {
     tfoot.innerHTML = `
       <tr>
         <td class="px-4 py-2.5">합계</td>
         <td class="px-4 py-2.5 text-center">${gStd}</td>
         <td class="px-4 py-2.5 text-center">${gPrem}</td>
-        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gStdC)}</td>
-        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gPremC)}</td>
-        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(gExtra)}</td>
-        <td class="px-4 py-2.5 text-right">${_aiFmtUsd(grand)}</td>
+        <td class="px-4 py-2.5 text-right">${_fmtUsd(gStdCost)}</td>
+        <td class="px-4 py-2.5 text-right">${_fmtUsd(gPremCost)}</td>
+        <td class="px-4 py-2.5 text-right">${_fmtUsd(gExtra)}</td>
+        <td class="px-4 py-2.5 text-right">${_fmtUsd(gStdCost + gPremCost + gExtra)}</td>
       </tr>`;
   }
-
-  _updateAiSortIcons(tbody, st);
 }
 
+// 비용집계 페이지: 두 표(사업부별 / 배포목적별)를 한 번에 렌더
 async function renderAiDeptSummary() {
   try {
     if (!allAiLicenseSeats.length) {
       const data = await azApiFetch(`${AI_SEAT_TBL}?limit=2000`);
       allAiLicenseSeats = data?.data || [];
     }
-    const active = allAiLicenseSeats.filter(s => s.status === '활성');
-
-    // 1) 사업부별  2) 배포목적별 — 그룹 데이터를 상태에 저장 후 정렬 렌더
-    _aiSummaryState.dept.groups    = active.length ? aggregateAiSeats(active, s => s.department) : null;
-    _aiSummaryState.purpose.groups = active.length ? aggregateAiSeats(active, s => s.purpose)    : null;
-
-    renderAiSummaryTable('dept');
-    renderAiSummaryTable('purpose');
+    renderAiSummaryTable('department', 'aiDeptSummaryBody', 'aiDeptSummaryFoot', '활성 상태인 배포 시트가 없습니다.');
+    renderAiSummaryTable('assign_type', 'aiPurposeSummaryBody', 'aiPurposeSummaryFoot', '활성 상태인 배포 시트가 없습니다.');
   } catch (e) {
     showToast('비용집계 로드 실패: ' + e.message, 'error');
   }
 }
+// 하위호환용 별칭
+const renderAiCostSummary = renderAiDeptSummary;
 
-function exportAiDeptSummaryExcel() {
-  const active = (allAiLicenseSeats || []).filter(s => s.status === '활성');
-  if (!active.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
-  if (typeof XLSX === 'undefined') { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); return; }
-
-  const headers = ['구분','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
-  const toRows = (groups) => Object.keys(groups)
-    .sort((a,b) => (groups[b].stdCost+groups[b].premCost+groups[b].extra) - (groups[a].stdCost+groups[a].premCost+groups[a].extra))
-    .map(k => { const g = groups[k]; return [k, g.std, g.prem, g.stdCost, g.premCost, g.extra, g.stdCost+g.premCost+g.extra]; });
-
-  const deptRows    = toRows(aggregateAiSeats(active, s => s.department));
-  const purposeRows = toRows(aggregateAiSeats(active, s => s.purpose));
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...deptRows]),    '사업부별집계');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...purposeRows]), '배포목적별집계');
-  XLSX.writeFile(wb, `AI라이선스_비용집계_${Date.now()}.xlsx`);
-  showToast('Excel 파일이 다운로드되었습니다.', 'success');
+function _aiSummaryExcelRows(keyField) {
+  const { groups, keys } = aggregateAiSeats(keyField);
+  return keys.map(k => {
+    const g = groups[k];
+    return [k, g.std, g.prem, g.stdCost, g.premCost, g.extra, g.stdCost + g.premCost + g.extra];
+  });
 }
 
-// 보고용 인쇄 (사업부별 + 배포목적별 한 페이지)
-function printAiDeptSummary() {
-  const active = (allAiLicenseSeats || []).filter(s => s.status === '활성');
+function exportAiDeptSummaryExcel() {
+  const rows = _aiSummaryExcelRows('department');
+  if (!rows.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  const headers = ['사업부','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '사업부별집계');
+    XLSX.writeFile(wb, `AI라이선스_사업부별집계_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); }
+}
+
+function exportAiPurposeSummaryExcel() {
+  const rows = _aiSummaryExcelRows('assign_type');
+  if (!rows.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
+  const headers = ['배포구분','Standard 인원','Premium 인원','Standard 소계(USD)','Premium 소계(USD)','추가크레딧(USD)','합계(USD)'];
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '배포목적별집계');
+    XLSX.writeFile(wb, `AI라이선스_배포목적별집계_${Date.now()}.xlsx`);
+    showToast('Excel 파일이 다운로드되었습니다.', 'success');
+  } else { showToast('Excel 내보내기를 사용할 수 없습니다.', 'error'); }
+}
+
+// 비용집계 보고용 인쇄 (두 표를 한 장에)
+function printAiCostSummary() {
+  const active = allAiLicenseSeats.filter(s => s.status === '활성');
   if (!active.length) { showToast('인쇄할 데이터가 없습니다.', 'warning'); return; }
 
-  const monthEl = document.getElementById('aiDeptSummaryMonth');
-  const baseMonth = (monthEl && monthEl.value) ? monthEl.value : new Date().toISOString().slice(0,7);
-  const printedAt = new Date().toLocaleString('ko-KR');
-
-  const buildTable = (groups, labelHeader) => {
-    const keys = Object.keys(groups).sort((a,b) =>
-      (groups[b].stdCost+groups[b].premCost+groups[b].extra) - (groups[a].stdCost+groups[a].premCost+groups[a].extra));
-    let gStd=0, gPrem=0, gStdC=0, gPremC=0, gExtra=0;
-    const body = keys.map(k => {
-      const g = groups[k]; const t = g.stdCost+g.premCost+g.extra;
-      gStd+=g.std; gPrem+=g.prem; gStdC+=g.stdCost; gPremC+=g.premCost; gExtra+=g.extra;
-      return `<tr><td class="l">${k}</td><td class="c">${g.std}</td><td class="c">${g.prem}</td><td class="r">${_aiFmtUsd(g.stdCost)}</td><td class="r">${_aiFmtUsd(g.premCost)}</td><td class="r">${_aiFmtUsd(g.extra)}</td><td class="r b">${_aiFmtUsd(t)}</td></tr>`;
+  const buildTable = (keyField, keyLabel) => {
+    const { groups, keys } = aggregateAiSeats(keyField);
+    let gStd=0, gPrem=0, gStdCost=0, gPremCost=0, gExtra=0;
+    const rows = keys.map(k => {
+      const g = groups[k];
+      const total = g.stdCost + g.premCost + g.extra;
+      gStd+=g.std; gPrem+=g.prem; gStdCost+=g.stdCost; gPremCost+=g.premCost; gExtra+=g.extra;
+      return `<tr><td class="lbl">${k}</td><td>${g.std}</td><td>${g.prem}</td><td class="num">${_fmtUsd(g.stdCost)}</td><td class="num">${_fmtUsd(g.premCost)}</td><td class="num">${_fmtUsd(g.extra)}</td><td class="num total">${_fmtUsd(total)}</td></tr>`;
     }).join('');
-    const grand = gStdC+gPremC+gExtra;
-    return `<table>
-      <thead><tr><th class="l">${labelHeader}</th><th>Standard 인원</th><th>Premium 인원</th><th>Standard 소계</th><th>Premium 소계</th><th>추가크레딧</th><th>합계(USD)</th></tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr><td class="l">합계</td><td class="c">${gStd}</td><td class="c">${gPrem}</td><td class="r">${_aiFmtUsd(gStdC)}</td><td class="r">${_aiFmtUsd(gPremC)}</td><td class="r">${_aiFmtUsd(gExtra)}</td><td class="r">${_aiFmtUsd(grand)}</td></tr></tfoot>
-    </table>`;
+    const foot = `<tr class="sum"><td class="lbl">합계</td><td>${gStd}</td><td>${gPrem}</td><td class="num">${_fmtUsd(gStdCost)}</td><td class="num">${_fmtUsd(gPremCost)}</td><td class="num">${_fmtUsd(gExtra)}</td><td class="num total">${_fmtUsd(gStdCost+gPremCost+gExtra)}</td></tr>`;
+    return `
+      <h2>${keyLabel}</h2>
+      <table>
+        <thead><tr><th>${keyLabel.includes('사업부')?'사업부':'배포 구분'}</th><th>Standard 인원</th><th>Premium 인원</th><th>Standard 소계</th><th>Premium 소계</th><th>추가크레딧</th><th>합계(USD)</th></tr></thead>
+        <tbody>${rows}${foot}</tbody>
+      </table>`;
   };
 
-  const deptTable    = buildTable(aggregateAiSeats(active, s => s.department), '사업부');
-  const purposeTable = buildTable(aggregateAiSeats(active, s => s.purpose),    '배포목적');
-  const totalSeats = active.length;
-  const totalCost = active.reduce((a,s) => a + (Number(s.seat_cost_usd)||0) + (Number(s.extra_credit_usd)||0), 0);
+  const now = new Date();
+  const generated = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>AI 라이선스 비용집계</title>
-  <style>
-    *{box-sizing:border-box;}
-    body{font-family:-apple-system,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#1f2937;margin:32px;}
-    h1{font-size:20px;margin:0 0 4px;}
-    .meta{color:#6b7280;font-size:12px;margin-bottom:18px;}
-    .summary{display:flex;gap:32px;margin-bottom:22px;}
-    .summary div{font-size:12px;color:#6b7280;}
-    .summary b{display:block;font-size:18px;color:#6d28d9;margin-top:2px;}
-    h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #6d28d9;}
-    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;}
-    th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:right;}
-    th{background:#f3f4f6;font-weight:600;text-align:center;}
-    th.l{text-align:left;} td.l{text-align:left;font-weight:500;} td.c{text-align:center;}
-    tfoot td{background:#f5f3ff;font-weight:700;}
-    td.b{font-weight:700;color:#6d28d9;}
-    @media print{body{margin:12mm;} button{display:none;}}
-  </style></head><body>
-    <h1>AI 라이선스 비용집계</h1>
-    <div class="meta">기준월 ${baseMonth} · 출력일시 ${printedAt} · GoWit 경영지원팀</div>
-    <div class="summary">
-      <div>총 활성 시트<b>${totalSeats}개</b></div>
-      <div>월 총비용<b>${_aiFmtUsd(totalCost)}</b></div>
-    </div>
-    <h2>1. 사업부별 시트 비용 집계</h2>
-    ${deptTable}
-    <h2>2. 배포목적별 시트 비용 집계</h2>
-    ${purposeTable}
-  </body></html>`;
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><title>AI 라이선스 비용집계 보고</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Malgun Gothic','Noto Sans KR',sans-serif; padding: 32px; color: #1f2937; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 24px 0 8px; color: #6d28d9; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+  th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; }
+  thead th { background: #f3f4f6; font-weight: 700; }
+  td.lbl { text-align: left; font-weight: 600; }
+  td.num { text-align: right; }
+  td.total { font-weight: 700; background: #f5f3ff; }
+  tr.sum td { background: #ede9fe; font-weight: 700; }
+  .footer-note { margin-top: 16px; font-size: 11px; color: #9ca3af; }
+  @media print { body { padding: 10mm; } @page { size: portrait; margin: 12mm; } }
+</style></head><body>
+  <h1>AI 라이선스 비용집계 보고</h1>
+  <div class="meta">기준: 배포 현황 활성 시트 &nbsp;|&nbsp; 출력일시: ${generated}</div>
+  ${buildTable('department', '1. 사업부별 시트 비용 집계')}
+  ${buildTable('assign_type', '2. 배포목적별 시트 비용 집계')}
+  <div class="footer-note">※ 본 보고서는 IT 통합 자산관리 시스템에서 자동 생성되었습니다.</div>
+  <script>window.onload = () => window.print();<\/script>
+</body></html>`;
 
-  const w = window.open('', '_blank');
-  if (!w) { showToast('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.', 'error'); return; }
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); }, 350);
+  const win = window.open('', '_blank');
+  if (!win) { showToast('팝업이 차단되어 인쇄 화면을 열 수 없습니다. 팝업 차단을 해제해주세요.', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // ============================================================
@@ -1957,23 +1720,6 @@ function resetAzureCostFilter() {
     if (el) el.value = '';
   });
   loadAzureCosts();
-}
-
-// 개별 입력 항목 목록 접기/펼치기
-function toggleAzCostList() {
-  const wrap = document.getElementById('azCostListWrap');
-  const caret = document.getElementById('azCostListCaret');
-  if (!wrap) return;
-  const collapsed = wrap.classList.toggle('hidden');
-  if (caret) caret.className = `fas ${collapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-xs text-blue-500 transition-transform`;
-}
-
-// 메뉴 진입 시 항상 접힌 상태로 초기화
-function collapseAzCostList() {
-  const wrap = document.getElementById('azCostListWrap');
-  const caret = document.getElementById('azCostListCaret');
-  if (wrap) wrap.classList.add('hidden');
-  if (caret) caret.className = 'fas fa-chevron-right text-xs text-blue-500 transition-transform';
 }
 
 function renderAzureCostTable() {
@@ -2376,375 +2122,6 @@ function exportAzureCostPivotExcel() {
     showToast('Excel 파일이 다운로드되었습니다.', 'success');
   } else {
     showToast('Excel 내보내기를 사용할 수 없습니다.', 'error');
-  }
-}
-
-// ============================================================
-// [리뉴얼] Azure 리소스 사용 명세 (서비스별) — 대용량 Excel 업로드
-//   업로드 양식 순서: 서비스명 · 부서 · 리소스명 · 리소스 설명 · 리소스 사용량
-//   서비스명 기준으로만 그룹핑/맵핑. 기준월 단위로 관리.
-// ============================================================
-const ARU_TBL = 'azure_resource_usage';
-let allAru = [];            // 현재 기준월의 리소스 사용 명세
-const aruExpanded = {};     // { 서비스명: true(펼침)/false(접힘) } — 기본 접힘
-
-function _aruCurrentPeriod() {
-  const el = document.getElementById('aruPeriod');
-  if (el && el.value) return el.value;
-  const now = new Date();
-  const p = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  if (el) el.value = p;
-  return p;
-}
-
-// 숫자 파싱 (콤마/공백 제거). 숫자가 아니면 null
-function _aruNum(v) {
-  if (v === null || v === undefined || v === '') return null;
-  const n = Number(String(v).replace(/[,\s]/g, ''));
-  return isNaN(n) ? null : n;
-}
-
-// period 필터 + 페이지네이션 조회 (대용량 대비)
-async function _aruFetchByPeriod(period) {
-  const all = [];
-  const pageSize = 1000;
-  let offset = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?period=eq.${encodeURIComponent(period)}&order=service_name.asc&limit=${pageSize}&offset=${offset}`;
-    const res = await fetch(url, { headers: SB_HEADERS });
-    if (!res.ok) throw new Error(`조회 실패 ${res.status}: ${await res.text()}`);
-    const rows = await res.json();
-    all.push(...rows);
-    if (rows.length < pageSize) break;
-    offset += pageSize;
-  }
-  return all;
-}
-
-async function _aruDeleteByPeriod(period) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${ARU_TBL}?period=eq.${encodeURIComponent(period)}`, {
-    method: 'DELETE', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-  });
-  if (!res.ok) throw new Error(`삭제 실패 ${res.status}: ${await res.text()}`);
-}
-
-// 데이터가 존재하는 가장 최근 기준월 (비용 대시보드 연동용)
-async function _aruLatestPeriod() {
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?select=period&order=period.desc&limit=1`;
-    const res = await fetch(url, { headers: SB_HEADERS });
-    if (!res.ok) return null;
-    const rows = await res.json();
-    return rows.length ? rows[0].period : null;
-  } catch { return null; }
-}
-
-// 데이터가 존재하는 기준월 목록 (오름차순) — 대시보드 당월/전월 비교용
-async function _aruDistinctPeriods() {
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/${ARU_TBL}?select=period&order=period.asc&limit=100000`;
-    const res = await fetch(url, { headers: SB_HEADERS });
-    if (!res.ok) return [];
-    const rows = await res.json();
-    return [...new Set(rows.map(r => r.period).filter(Boolean))].sort();
-  } catch { return []; }
-}
-
-// 비용 대시보드 연동용 상태 (업로드된 리소스 비용)
-let dashAruLatest = [];        // 최근 기준월 행
-let dashAruPrev = [];          // 직전 기준월 행
-let dashAruLatestPeriod = null;
-let dashAruPrevPeriod = null;
-
-const _aruCostOf = r => Number(r.cost_krw) || 0;
-
-// [분류(서비스구분) 기준] 서비스구분별 리소스 비용 패널 — 분류 > 서비스명 계층
-function renderAruCategorySummary() {
-  const box = document.getElementById('azResGroupSummary');
-  if (!box) return;
-  const rows = dashAruLatest;
-  if (!rows || !rows.length) {
-    box.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">업로드된 리소스 비용 명세가 없습니다.<br><span class="text-xs text-gray-300">월별 비용대장 하단에서 Excel을 업로드하세요.</span></div>`;
-    return;
-  }
-  // 분류 > 서비스명 계층 집계
-  const cats = {}; // { 분류: { total, count, services: { 서비스명: { total, count } } } }
-  rows.forEach(r => {
-    const c = r.category || '미분류';
-    const s = r.service_name || '기타';
-    const cost = _aruCostOf(r);
-    if (!cats[c]) cats[c] = { total: 0, count: 0, services: {} };
-    cats[c].total += cost; cats[c].count += 1;
-    if (!cats[c].services[s]) cats[c].services[s] = { total: 0, count: 0 };
-    cats[c].services[s].total += cost; cats[c].services[s].count += 1;
-  });
-  const catOrder = Object.keys(cats).sort((a, b) => cats[b].total - cats[a].total);
-  const won = v => '₩' + Math.round(v).toLocaleString();
-
-  box.innerHTML = catOrder.map(c => {
-    const g = cats[c];
-    const svcOrder = Object.keys(g.services).sort((a, b) => g.services[b].total - g.services[a].total);
-    const svcRows = svcOrder.map(s => {
-      const sd = g.services[s];
-      return `
-        <div class="flex items-center justify-between py-1 pl-6 text-xs border-b border-gray-50 last:border-0">
-          <span class="text-gray-500"><i class="fas fa-level-up-alt fa-rotate-90 text-gray-300 mr-1.5"></i>${s} <span class="text-gray-300">(${sd.count}개)</span></span>
-          <span class="font-medium text-gray-600">${won(sd.total)}</span>
-        </div>`;
-    }).join('');
-    return `
-      <div class="mb-2">
-        <div class="flex items-center justify-between py-1.5 bg-indigo-50/60 rounded-lg px-2">
-          <span class="text-sm font-bold text-indigo-700">${c} <span class="text-xs font-normal text-indigo-400">(리소스 ${g.count}개)</span></span>
-          <span class="text-sm font-bold text-indigo-700">${won(g.total)}</span>
-        </div>
-        ${svcRows}
-      </div>`;
-  }).join('');
-}
-
-// 배열 청크 단위 대량 insert
-async function _aruInsertBatch(rows) {
-  const CHUNK = 500;
-  const statusEl = document.getElementById('aruUploadStatus');
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${ARU_TBL}`, {
-      method: 'POST',
-      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-      body: JSON.stringify(chunk),
-    });
-    if (!res.ok) throw new Error(`업로드 실패 ${res.status}: ${await res.text()}`);
-    if (statusEl) statusEl.textContent = `업로드 중… ${Math.min(i + CHUNK, rows.length)} / ${rows.length}`;
-  }
-}
-
-async function loadAzureResourceUsage() {
-  const period = _aruCurrentPeriod();
-  try {
-    allAru = await _aruFetchByPeriod(period);
-
-    // 서비스 필터 옵션 채우기
-    const services = [...new Set(allAru.map(r => r.service_name || '기타'))].sort((a, b) => a.localeCompare(b));
-    const sel = document.getElementById('aruServiceFilter');
-    if (sel) {
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">전체 서비스</option>' +
-        services.map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
-      if (services.includes(cur)) sel.value = cur;
-    }
-    renderAruGroups();
-  } catch (e) {
-    showToast('리소스 사용 명세 조회 실패: ' + e.message, 'error');
-  }
-}
-
-function toggleAruGroup(svc) {
-  aruExpanded[svc] = !(aruExpanded[svc] === true);
-  renderAruGroups();
-}
-
-function expandAllAruGroups(expand) {
-  const services = [...new Set(allAru.map(r => r.service_name || '기타'))];
-  services.forEach(s => { aruExpanded[s] = !!expand; });
-  renderAruGroups();
-}
-
-function renderAruGroups() {
-  const tbody = document.getElementById('aruTableBody');
-  if (!tbody) return;
-
-  const q = (document.getElementById('aruSearch')?.value || '').trim().toLowerCase();
-  const svcFilter = document.getElementById('aruServiceFilter')?.value || '';
-
-  let rows = allAru.slice();
-  if (svcFilter) rows = rows.filter(r => (r.service_name || '기타') === svcFilter);
-  if (q) rows = rows.filter(r =>
-    (r.resource_name || '').toLowerCase().includes(q) ||
-    (r.resource_desc || '').toLowerCase().includes(q));
-
-  setEl('aruCount', `${rows.length}건`);
-
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-16 text-gray-400"><i class="fas fa-layer-group text-4xl block mb-3 opacity-20"></i>표시할 리소스 비용 명세가 없습니다.</td></tr>`;
-    return;
-  }
-
-  // 서비스명 기준 그룹핑
-  const groups = {};
-  rows.forEach(r => {
-    const s = r.service_name || '기타';
-    (groups[s] = groups[s] || []).push(r);
-  });
-  const order = Object.keys(groups).sort((a, b) => a.localeCompare(b));
-
-  const esc = v => String(v ?? '').replace(/"/g, '&quot;');
-  const won = v => '₩' + (Number(v) || 0).toLocaleString();
-
-  let html = '';
-  order.forEach(svc => {
-    const list = groups[svc];
-    const cats = [...new Set(list.map(r => r.category).filter(Boolean))];
-    const costSum = list.reduce((s, r) => s + (Number(r.cost_krw) || 0), 0);
-    const expanded = aruExpanded[svc] === true; // 기본 접힘 (대용량 대비)
-    const caret = expanded ? 'fa-chevron-down' : 'fa-chevron-right';
-    const svcJs = svc.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-    html += `<tr class="bg-blue-50/50 border-y border-blue-100 cursor-pointer hover:bg-blue-100/50" onclick="toggleAruGroup('${svcJs}')">
-      <td class="px-4 py-2.5 font-bold text-gray-800"><i class="fas ${caret} text-xs text-blue-500 mr-2"></i>${svc} <span class="text-xs font-normal text-gray-400 ml-1">${list.length}개 리소스</span></td>
-      <td class="px-4 py-2.5 text-xs text-gray-500">${cats.length ? cats.join(', ') : '-'}</td>
-      <td class="px-4 py-2.5"></td>
-      <td class="px-4 py-2.5"></td>
-      <td class="px-4 py-2.5 text-right font-bold text-blue-700">${won(costSum)}</td>
-    </tr>`;
-
-    if (expanded) {
-      html += list.map(r => `<tr class="border-b border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-2 pl-10 text-gray-700">${r.resource_name || '-'}</td>
-        <td class="px-4 py-2 text-xs text-gray-500">${r.category || '-'}</td>
-        <td class="px-4 py-2 text-xs text-gray-500">${r.department || '-'}</td>
-        <td class="px-4 py-2 text-xs text-gray-500 max-w-md truncate" title="${esc(r.resource_desc)}">${r.resource_desc || '-'}</td>
-        <td class="px-4 py-2 text-right text-gray-600">${won(r.cost_krw)}</td>
-      </tr>`).join('');
-    }
-  });
-
-  tbody.innerHTML = html;
-}
-
-// 업로드 헤더명 → DB 컬럼 매핑 (공백/대소문자 무시, 약간의 변형 허용)
-function _aruMapHeader(h) {
-  const k = String(h || '').replace(/\s/g, '').toLowerCase();
-  if (['분류', '카테고리', 'category', 'group', 'servicegroup', '서비스구분'].includes(k)) return 'category';
-  if (['부서', 'department', 'dept'].includes(k)) return 'department';
-  if (['서비스명', '서비스', 'service', 'servicename'].includes(k)) return 'service_name';
-  if (['리소스명', '리소스', 'resource', 'resourcename'].includes(k)) return 'resource_name';
-  if (['리소스설명', '설명', 'resourcedesc', 'description', 'desc'].includes(k)) return 'resource_desc';
-  if (['리소스비용(원화)', '리소스비용', '비용(원화)', '비용', '비용원화', 'cost', 'costkrw', 'amount', '금액'].includes(k)) return 'cost_krw';
-  return null;
-}
-
-async function handleAruUpload(event) {
-  const file = event.target.files && event.target.files[0];
-  event.target.value = ''; // 같은 파일 재선택 허용
-  if (!file) return;
-
-  if (typeof AuthManager !== 'undefined' && AuthManager.hasPermission && !AuthManager.hasPermission('azure', 'write')) {
-    showToast('업로드 권한이 없습니다. 관리자에게 문의하세요.', 'error');
-    return;
-  }
-  if (typeof XLSX === 'undefined') { showToast('Excel 파서를 사용할 수 없습니다.', 'error'); return; }
-
-  const period = _aruCurrentPeriod();
-  const statusEl = document.getElementById('aruUploadStatus');
-  if (statusEl) statusEl.textContent = '파일 읽는 중…';
-
-  try {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' });
-    if (!aoa.length) { showToast('빈 파일입니다.', 'warning'); if (statusEl) statusEl.textContent = ''; return; }
-
-    // 헤더 행 탐색 (상단 10행 내에서 '서비스명' 열이 있는 첫 행)
-    let headerRowIdx = -1, colMap = null;
-    for (let i = 0; i < Math.min(aoa.length, 10); i++) {
-      const map = {};
-      aoa[i].forEach((cell, idx) => { const f = _aruMapHeader(cell); if (f && map[f] === undefined) map[f] = idx; });
-      if (map.service_name !== undefined) { headerRowIdx = i; colMap = map; break; }
-    }
-    if (headerRowIdx < 0 || !colMap) {
-      showToast('헤더에서 "서비스명" 열을 찾지 못했습니다. 양식(분류·부서·서비스명·리소스명·리소스 설명·리소스 비용(원화))을 확인해주세요.', 'error');
-      if (statusEl) statusEl.textContent = '';
-      return;
-    }
-
-    const now = Date.now();
-    const parsed = [];
-    let skipped = 0;
-    for (let i = headerRowIdx + 1; i < aoa.length; i++) {
-      const row = aoa[i] || [];
-      const svc = String(row[colMap.service_name] ?? '').trim();
-      if (!svc) { skipped++; continue; } // 서비스명 없는 행 제외 (서비스명으로 맵핑)
-      parsed.push({
-        period,
-        category:      colMap.category      !== undefined ? (String(row[colMap.category] ?? '').trim() || '미분류') : '미분류',
-        department:    colMap.department     !== undefined ? String(row[colMap.department] ?? '').trim() : '',
-        service_name:  svc,
-        resource_name: colMap.resource_name  !== undefined ? String(row[colMap.resource_name] ?? '').trim() : '',
-        resource_desc: colMap.resource_desc  !== undefined ? String(row[colMap.resource_desc] ?? '').trim() : '',
-        cost_krw:      colMap.cost_krw       !== undefined ? (_aruNum(row[colMap.cost_krw]) ?? 0) : 0,
-        created_at: now,
-      });
-    }
-
-    if (!parsed.length) { showToast('가져올 데이터가 없습니다 (서비스명이 있는 행 없음).', 'warning'); if (statusEl) statusEl.textContent = ''; return; }
-
-    // 기존 월 데이터 처리: 교체 vs 추가
-    const existing = await _aruFetchByPeriod(period);
-    if (existing.length) {
-      const replace = confirm(`${period} 기준월에 이미 ${existing.length}건이 있습니다.\n\n[확인] 기존 데이터를 삭제하고 새로 업로드\n[취소] 기존 데이터에 이어서 추가`);
-      if (replace) {
-        if (statusEl) statusEl.textContent = '기존 데이터 삭제 중…';
-        await _aruDeleteByPeriod(period);
-      }
-    }
-
-    if (statusEl) statusEl.textContent = `업로드 중… 0 / ${parsed.length}`;
-    await _aruInsertBatch(parsed);
-
-    const msg = `${parsed.length.toLocaleString()}건 업로드 완료` + (skipped ? ` (서비스명 없는 ${skipped}건 제외)` : '');
-    showToast(msg, 'success');
-    if (statusEl) statusEl.textContent = msg;
-    await loadAzureResourceUsage();
-  } catch (e) {
-    showToast('업로드 실패: ' + e.message, 'error');
-    if (statusEl) statusEl.textContent = '';
-  }
-}
-
-function downloadAruTemplate() {
-  if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
-  const headers = ['분류', '부서', '서비스명', '리소스명', '리소스 설명', '리소스 비용(원화)'];
-  const example = ['Goworks', '경영지원팀', 'AI Framework', 'gowit-web-prod', '프로덕션 웹앱 인스턴스', 20000];
-  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-  ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 32 }, { wch: 16 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '리소스사용량');
-  XLSX.writeFile(wb, 'Azure_리소스사용량_업로드양식.xlsx');
-  showToast('업로드 양식을 다운로드했습니다.', 'success');
-}
-
-function exportAruExcel() {
-  if (!allAru.length) { showToast('내보낼 데이터가 없습니다.', 'warning'); return; }
-  if (typeof XLSX === 'undefined') { showToast('Excel 기능을 사용할 수 없습니다.', 'error'); return; }
-  const headers = ['분류', '부서', '서비스명', '리소스명', '리소스 설명', '리소스 비용(원화)'];
-  const sorted = [...allAru].sort((a, b) =>
-    (a.category || '').localeCompare(b.category || '') || (a.service_name || '').localeCompare(b.service_name || ''));
-  const rows = sorted.map(r => [r.category || '', r.department || '', r.service_name || '', r.resource_name || '', r.resource_desc || '', Number(r.cost_krw) || 0]);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 32 }, { wch: 16 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '리소스비용명세');
-  XLSX.writeFile(wb, `Azure리소스비용명세_${_aruCurrentPeriod()}_${Date.now()}.xlsx`);
-  showToast('Excel 파일이 다운로드되었습니다.', 'success');
-}
-
-async function deleteAruPeriod() {
-  const period = _aruCurrentPeriod();
-  if (typeof AuthManager !== 'undefined' && AuthManager.hasPermission && !AuthManager.hasPermission('azure', 'write')) {
-    showToast('삭제 권한이 없습니다. 관리자에게 문의하세요.', 'error');
-    return;
-  }
-  if (!allAru.length) { showToast('삭제할 데이터가 없습니다.', 'warning'); return; }
-  if (!confirm(`${period} 기준월의 리소스 사용 명세 ${allAru.length.toLocaleString()}건을 모두 삭제하시겠습니까?`)) return;
-  try {
-    await _aruDeleteByPeriod(period);
-    showToast('삭제되었습니다.', 'success');
-    await loadAzureResourceUsage();
-  } catch (e) {
-    showToast('삭제 실패: ' + e.message, 'error');
   }
 }
 
