@@ -158,6 +158,9 @@
           <span id="headerUserName" class="text-sm font-medium text-gray-700">-</span>
           <span id="headerUserRole" class="text-xs px-2 py-0.5 rounded-full font-semibold role-chip">-</span>
         </div>
+        <button onclick="exportExcel()" class="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"><i class="fas fa-file-excel"></i><span class="hidden sm:inline">Excel</span></button>
+        <button id="headerBtnAssetRegister" onclick="openModal('registerModal')" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"><i class="fas fa-plus"></i><span class="hidden sm:inline">자산 등록</span></button>
+        <button id="headerBtnSubRegister" onclick="openModal('subRegisterModal')" class="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"><i class="fas fa-credit-card"></i><span class="hidden sm:inline">구독 등록</span></button>
         <button onclick="AuthManager.logout()" class="flex items-center gap-1.5 px-3 py-2 bg-gray-200 text-gray-600 text-sm rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors" title="로그아웃">
           <i class="fas fa-sign-out-alt"></i><span class="hidden sm:inline">로그아웃</span>
         </button>
@@ -579,8 +582,8 @@
           </div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 class="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i>서비스구분별 리소스 비용 (업로드 연동)</h3>
-          <p class="text-xs text-gray-400 mb-3">업로드한 "리소스 비용 명세"를 <b>분류</b> 기준으로 집계하고, 분류 아래 서비스명별로 세분합니다 (최근 기준월).</p>
+          <h3 class="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i>서비스구분별 리소스 비용 (리소스 대장 연동)</h3>
+          <p class="text-xs text-gray-400 mb-3">리소스 대장의 "서비스 구분"과 "리소스 그룹" 기준으로 예상 비용을 집계합니다.</p>
           <div id="azResGroupSummary" class="space-y-1 max-h-64 overflow-y-auto"></div>
         </div>
       </div>
@@ -656,31 +659,30 @@
     <!-- ===== AI 라이선스 - 비용집계 ===== -->
     <section id="page-ai-dept-summary" class="page-section hidden">
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
-          <div><label class="text-xs font-semibold text-gray-600 block mb-1">기준월</label><input type="month" id="aiDeptSummaryMonth" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"/></div>
-          <button onclick="renderAiDeptSummary()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-sync"></i>새로고침</button>
-          <button onclick="printAiDeptSummary()" class="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 flex items-center gap-1.5"><i class="fas fa-print"></i>인쇄</button>
-          <button onclick="exportAiDeptSummaryExcel()" class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1.5"><i class="fas fa-file-excel"></i>Excel</button>
-          <p class="text-xs text-gray-400 pb-2">※ "배포 현황"의 활성 시트를 기준으로 자동 집계됩니다 (별도 입력 불필요)</p>
+        <div class="flex flex-wrap gap-3 items-center">
+          <button onclick="renderAiCostSummary()" class="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 flex items-center gap-1.5"><i class="fas fa-sync"></i>새로고침</button>
+          <button onclick="printAiCostSummary()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"><i class="fas fa-print"></i>인쇄</button>
+          <p class="text-xs text-gray-400">※ "배포 현황"의 활성 시트를 기준으로 자동 집계됩니다 (별도 입력 불필요)</p>
         </div>
       </div>
 
-      <!-- 1) 사업부별 -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+      <!-- 1) 사업부별 시트 비용집계 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-building text-violet-500"></i>1. 사업부별 시트 비용 집계</span>
+          <button onclick="exportAiDeptSummaryExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <tr>
-                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-violet-600" data-field="key" onclick="sortAiSummary('dept','key')">사업부 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="std" onclick="sortAiSummary('dept','std')">Standard 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="prem" onclick="sortAiSummary('dept','prem')">Premium 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="stdCost" onclick="sortAiSummary('dept','stdCost')">Standard 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="premCost" onclick="sortAiSummary('dept','premCost')">Premium 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="extra" onclick="sortAiSummary('dept','extra')">추가크레딧(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="total" onclick="sortAiSummary('dept','total')">합계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">사업부</th>
+                <th class="px-4 py-3 text-center">Standard 인원</th>
+                <th class="px-4 py-3 text-center">Premium 인원</th>
+                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
+                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
+                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
+                <th class="px-4 py-3 text-right">합계(USD)</th>
               </tr>
             </thead>
             <tbody id="aiDeptSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
@@ -689,22 +691,23 @@
         </div>
       </div>
 
-      <!-- 2) 배포목적별 -->
+      <!-- 2) 배포목적별 시트 비용집계 -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-bullseye text-violet-500"></i>2. 배포목적별 시트 비용 집계</span>
+          <button onclick="exportAiPurposeSummaryExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <tr>
-                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-violet-600" data-field="key" onclick="sortAiSummary('purpose','key')">배포목적 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="std" onclick="sortAiSummary('purpose','std')">Standard 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-violet-600" data-field="prem" onclick="sortAiSummary('purpose','prem')">Premium 인원 <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="stdCost" onclick="sortAiSummary('purpose','stdCost')">Standard 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="premCost" onclick="sortAiSummary('purpose','premCost')">Premium 소계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="extra" onclick="sortAiSummary('purpose','extra')">추가크레딧(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="px-4 py-3 text-right cursor-pointer select-none hover:text-violet-600" data-field="total" onclick="sortAiSummary('purpose','total')">합계(USD) <i class="ai-sort-ico fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left">배포 구분</th>
+                <th class="px-4 py-3 text-center">Standard 인원</th>
+                <th class="px-4 py-3 text-center">Premium 인원</th>
+                <th class="px-4 py-3 text-right">Standard 소계(USD)</th>
+                <th class="px-4 py-3 text-right">Premium 소계(USD)</th>
+                <th class="px-4 py-3 text-right">추가크레딧(USD)</th>
+                <th class="px-4 py-3 text-right">합계(USD)</th>
               </tr>
             </thead>
             <tbody id="aiPurposeSummaryBody"><tr><td colspan="7" class="text-center py-16 text-gray-400">데이터가 없습니다.</td></tr></tbody>
@@ -819,24 +822,6 @@
         <div class="bg-gray-50 border border-gray-200 rounded-xl p-4"><div class="text-xs text-gray-600 font-semibold mb-1">등록 건수</div><div id="aiCostStatCount" class="text-xl font-bold text-gray-700">0건</div></div>
       </div>
 
-      <!-- 매월 보고용 피벗 요약표 (라이선스별) -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
-        <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-table text-violet-500"></i>월별 보고 (라이선스별)</span>
-          <div class="flex gap-2">
-            <button onclick="printAiCostReport()" class="text-xs px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 flex items-center gap-1"><i class="fas fa-print"></i>인쇄</button>
-            <button onclick="exportAiCostPivotExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm" id="aiCostPivotTable">
-            <thead id="aiCostPivotHead" class="bg-gray-50 text-xs font-semibold text-gray-500"></thead>
-            <tbody id="aiCostPivotBody"><tr><td class="text-center py-16 text-gray-400">비용 데이터가 없습니다.</td></tr></tbody>
-            <tfoot id="aiCostPivotFoot" class="bg-amber-50 text-xs font-bold text-amber-800"></tfoot>
-          </table>
-        </div>
-      </div>
-
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <span id="aiCostCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
@@ -949,13 +934,10 @@
       <!-- 개별 입력 항목 관리 -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <button onclick="toggleAzCostList()" class="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-blue-600 select-none">
-            <i id="azCostListCaret" class="fas fa-chevron-right text-xs text-blue-500 transition-transform"></i>
-            <span id="azCostCount">전체 0건</span>
-          </button>
+          <span id="azCostCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
           <button onclick="exportAzureCostExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
         </div>
-        <div id="azCostListWrap" class="overflow-x-auto hidden">
+        <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <tr>
@@ -969,51 +951,6 @@
               </tr>
             </thead>
             <tbody id="azCostTableBody"><tr><td colspan="7" class="text-center py-16 text-gray-400"><i class="fas fa-file-invoice-dollar text-4xl block mb-3 opacity-20"></i>비용 데이터가 없습니다.</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ===== [리뉴얼] 리소스 비용 명세 (서비스별) — 대용량 Excel 업로드 ===== -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-        <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50">
-          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-layer-group text-blue-500"></i>리소스 비용 명세 (서비스별)</span>
-          <div class="flex flex-wrap gap-2 items-center">
-            <label class="text-xs font-semibold text-gray-600">기준월</label>
-            <input type="month" id="aruPeriod" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-            <button onclick="loadAzureResourceUsage()" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 flex items-center gap-1"><i class="fas fa-search"></i>조회</button>
-            <button onclick="downloadAruTemplate()" class="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 flex items-center gap-1"><i class="fas fa-file-download"></i>양식 다운로드</button>
-            <label class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1 cursor-pointer font-medium">
-              <i class="fas fa-file-upload"></i>Excel 업로드
-              <input type="file" id="aruFileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleAruUpload(event)"/>
-            </label>
-            <button onclick="exportAruExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>내보내기</button>
-            <button onclick="deleteAruPeriod()" class="text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1"><i class="fas fa-trash"></i>해당월 삭제</button>
-          </div>
-        </div>
-        <div class="px-5 py-2.5 bg-blue-50/40 border-b border-blue-100 flex flex-wrap gap-x-4 gap-y-1 items-center text-xs text-gray-600">
-          <span>업로드 양식 순서: <b class="text-gray-700">분류 · 부서 · 서비스명 · 리소스명 · 리소스 설명 · 리소스 비용(원화)</b></span>
-          <span class="text-gray-400">※ 서비스명 기준으로 그룹핑됩니다. 서비스명이 없는 행은 제외됩니다. 분류는 대시보드 "서비스구분별 리소스 비용", 서비스명은 "서비스별 비용 분포"에 연동됩니다.</span>
-          <span id="aruUploadStatus" class="ml-auto text-blue-600 font-semibold"></span>
-        </div>
-        <div class="px-5 py-2 flex flex-wrap gap-3 items-center border-b border-gray-100">
-          <input type="text" id="aruSearch" placeholder="리소스명 · 설명 검색" oninput="renderAruGroups()" class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-          <select id="aruServiceFilter" onchange="renderAruGroups()" class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">전체 서비스</option></select>
-          <button onclick="expandAllAruGroups(true)" class="text-xs px-2.5 py-1.5 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-100">모두 펼치기</button>
-          <button onclick="expandAllAruGroups(false)" class="text-xs px-2.5 py-1.5 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-100">모두 접기</button>
-          <span id="aruCount" class="text-xs text-gray-500 ml-auto">0건</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <tr>
-                <th class="px-4 py-3 text-left">서비스명 / 리소스명</th>
-                <th class="px-4 py-3 text-left">분류</th>
-                <th class="px-4 py-3 text-left">부서</th>
-                <th class="px-4 py-3 text-left">리소스 설명</th>
-                <th class="px-4 py-3 text-right">리소스 비용(원)</th>
-              </tr>
-            </thead>
-            <tbody id="aruTableBody"><tr><td colspan="5" class="text-center py-16 text-gray-400"><i class="fas fa-layer-group text-4xl block mb-3 opacity-20"></i>업로드된 리소스 비용 명세가 없습니다. 상단의 <b>Excel 업로드</b>로 시작하세요.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1659,10 +1596,10 @@
 
 <script src="js/supabase.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/app.js?v=20260730b"></script>
+<script src="js/app.js"></script>
 <script src="js/subscription.js"></script>
 <script src="js/promotions.js"></script>
-<script src="js/azure.js?v=20260730b"></script>
+<script src="js/azure.js"></script>
 <script>
   // ── 인증 가드 ──
   (function() {
