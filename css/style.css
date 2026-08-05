@@ -333,6 +333,8 @@ table td {
 .btn-view:hover    { background:#dbeafe; }
 .btn-edit    { background:#f0fdf4; color:#16a34a; }
 .btn-edit:hover    { background:#dcfce7; }
+.btn-qr      { background:#f5f3ff; color:#7c3aed; }
+.btn-qr:hover      { background:#ede9fe; }
 .btn-checkout { background:#fff7ed; color:#c2410c; }
 .btn-checkout:hover { background:#fed7aa; }
 .btn-return   { background:#eef2ff; color:#4338ca; }
