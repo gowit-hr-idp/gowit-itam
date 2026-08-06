@@ -441,42 +441,43 @@ function resetFilter() {
   renderAssetTable();
 }
 
-// 장비명별 요약: 등록대수 / 반출수 / 5년 이상 경과(교체대상) - 전체 자산 기준(필터 무관)
+// 장비별 현황: 장비명(=asset_name)을 열로, 등록수/반출수를 행으로 표시 (전체 자산 기준)
 function renderAssetNameSummary() {
-  const tbody = document.getElementById('assetNameSummaryBody');
-  if (!tbody) return;
+  const table = document.getElementById('assetSummaryTable');
+  if (!table) return;
   if (!allAssets.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">데이터가 없습니다.</td></tr>';
+    table.innerHTML = '<tbody><tr><td class="text-center py-8 text-gray-400 px-4">데이터가 없습니다.</td></tr></tbody>';
     return;
   }
 
-  const today = new Date();
-  const FIVE_YEARS_MS = 5 * 365.25 * 86400000;
-  const groups = {}; // { 장비명: { total, out, replace } }
-
+  const groups = {}; // { 장비명: { total, out } }
   allAssets.forEach(a => {
     const name = a.asset_name || '(미지정)';
-    if (!groups[name]) groups[name] = { total: 0, out: 0, replace: 0 };
+    if (!groups[name]) groups[name] = { total: 0, out: 0 };
     groups[name].total += 1;
     if (a.status === '반출') groups[name].out += 1;
-    if (a.purchase_date && !['폐기','매각'].includes(a.status) &&
-        (today - new Date(a.purchase_date)) >= FIVE_YEARS_MS) {
-      groups[name].replace += 1;
-    }
   });
 
-  const names = Object.keys(groups).sort((a, b) => groups[b].total - groups[a].total);
+  // 등록수 많은 순으로 열 정렬
+  const cols = Object.keys(groups).sort((a, b) => groups[b].total - groups[a].total);
+  const c = 'border border-gray-300 px-3 py-2 text-center whitespace-nowrap';
 
-  tbody.innerHTML = names.map(name => {
-    const g = groups[name];
-    return `
-      <tr class="border-b border-gray-50 hover:bg-blue-50/20">
-        <td class="px-4 py-2 font-medium text-gray-700">${name}</td>
-        <td class="px-4 py-2 text-right font-semibold text-gray-800">${g.total.toLocaleString()}</td>
-        <td class="px-4 py-2 text-right ${g.out > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'}">${g.out.toLocaleString()}</td>
-        <td class="px-4 py-2 text-right ${g.replace > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}">${g.replace.toLocaleString()}</td>
-      </tr>`;
-  }).join('');
+  const head = `<thead><tr>
+      <th class="${c} bg-gray-100 text-left font-bold text-gray-700">장비명</th>
+      ${cols.map(name => `<th class="${c} bg-gray-50 font-semibold text-gray-700">${name}</th>`).join('')}
+    </tr></thead>`;
+
+  const rowReg = `<tr>
+      <td class="${c} bg-gray-50 text-left font-semibold text-gray-600">등록수</td>
+      ${cols.map(name => `<td class="${c} text-gray-800 font-medium">${groups[name].total.toLocaleString()}</td>`).join('')}
+    </tr>`;
+
+  const rowOut = `<tr>
+      <td class="${c} bg-gray-50 text-left font-semibold text-gray-600">반출수</td>
+      ${cols.map(name => `<td class="${c} ${groups[name].out > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'}">${groups[name].out.toLocaleString()}</td>`).join('')}
+    </tr>`;
+
+  table.innerHTML = head + '<tbody>' + rowReg + rowOut + '</tbody>';
 }
 
 function renderAssetTable() {
@@ -686,6 +687,10 @@ async function showAssetDetail(id) {
         <div class="detail-row"><span class="detail-label">위치</span><span class="detail-value">${asset.location || '-'}</span></div>
         <div class="detail-row md:col-span-2"><span class="detail-label">비고</span><span class="detail-value">${asset.note || '-'}</span></div>
       </div>
+      <div class="mt-3 pt-3 border-t border-gray-100">
+        <div class="detail-label mb-1.5"><i class="fas fa-history mr-1 text-gray-400"></i>사용자 · 장비 변경 이력</div>
+        <div id="assetDetailHistory" class="text-xs text-gray-500 space-y-1.5 max-h-40 overflow-y-auto">불러오는 중…</div>
+      </div>
     </div>
   `;
 
@@ -695,6 +700,37 @@ async function showAssetDetail(id) {
   };
 
   openModal('assetDetailModal');
+  loadAssetDetailHistory(asset.asset_no);
+}
+
+// 상세 팝업: 해당 자산의 사용자·장비 변경 이력 (전체 이력 조회 후 asset_no로 필터)
+async function loadAssetDetailHistory(assetNo) {
+  const box = document.getElementById('assetDetailHistory');
+  if (!box) return;
+  if (!assetNo) { box.innerHTML = '<span class="text-gray-400">-</span>'; return; }
+  try {
+    const res = await apiFetch(`${HTABLE}?limit=1000`);
+    let rows = (res.data || []).filter(h => (h.asset_no || '') === assetNo);
+    // 최신순 정렬 (action_date desc, 동일자면 원래 순서 역순)
+    rows.sort((a, b) => String(b.action_date || '').localeCompare(String(a.action_date || '')));
+    if (!rows.length) {
+      box.innerHTML = '<span class="text-gray-400">변경 이력이 없습니다.</span>';
+      return;
+    }
+    box.innerHTML = rows.map(h => {
+      const date = h.action_date || '';
+      const type = h.action_type || '';
+      const desc = h.description || '';
+      const who  = h.user_name ? ` <span class="text-gray-400">(${h.user_name})</span>` : '';
+      return `<div class="flex items-start gap-2">
+        <span class="text-gray-400 whitespace-nowrap font-mono">${date}</span>
+        <span class="history-badge hbadge-${type} shrink-0">${type}</span>
+        <span class="text-gray-600">${desc}${who}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<span class="text-red-400">이력 조회 실패</span>';
+  }
 }
 
 // ============================================================
@@ -762,15 +798,51 @@ async function saveAsset() {
 
   try {
     if (editId) {
+      const oldAsset = allAssets.find(a => String(a.id) === String(editId)) || {};
       await apiFetch(`${TABLE}/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
       showToast('자산 정보가 수정되었습니다.', 'success');
-      addHistory({
-        asset_no: payload.asset_no,
-        action_type: '상태변경',
-        action_date: new Date().toISOString().split('T')[0],
-        description: '자산 정보 수정',
-        handler: '관리자',
-      });
+
+      const today = new Date().toISOString().split('T')[0];
+      const prevUser   = (oldAsset.user_name || '').trim();
+      const newUser    = (payload.user_name || '').trim();
+      const prevStatus = oldAsset.status || '';
+      const locChanged = (oldAsset.location || '') !== (payload.location || '');
+
+      if (prevUser !== newUser) {
+        // 사용자 변경 (기존 사용자 → 신규 사용자 / 반납 후 신규 지급 포함)
+        addHistory({
+          asset_no: payload.asset_no,
+          action_type: '사용자변경',
+          action_date: today,
+          description: `사용자 변경: ${prevUser || '(미지정)'} → ${newUser || '(미지정)'}` +
+            (locChanged ? ` · 위치: ${oldAsset.location || '-'} → ${payload.location || '-'}` : ''),
+          user_name: newUser,
+          prev_status: prevStatus,
+          new_status: payload.status,
+          department: payload.department,
+          handler: '관리자',
+        });
+      } else if (prevStatus !== (payload.status || '')) {
+        addHistory({
+          asset_no: payload.asset_no,
+          action_type: '상태변경',
+          action_date: today,
+          description: `상태 변경: ${prevStatus || '-'} → ${payload.status || '-'}`,
+          user_name: newUser,
+          prev_status: prevStatus,
+          new_status: payload.status,
+          department: payload.department,
+          handler: '관리자',
+        });
+      } else {
+        addHistory({
+          asset_no: payload.asset_no,
+          action_type: '상태변경',
+          action_date: today,
+          description: '자산 정보 수정',
+          handler: '관리자',
+        });
+      }
     } else {
       // 자산번호 중복 체크
       if (allAssets.some(a => a.asset_no === payload.asset_no)) {
