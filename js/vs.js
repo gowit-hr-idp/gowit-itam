@@ -4,29 +4,123 @@
 //   서비스명: Security / Modern Work 기본, '설정'(카테고리 vs_service)에서 추가 가능
 // ============================================================
 const VS_TBL = 'vs_users';
+const VS_QUOTA_TBL = 'vs_service_quota';
 let allVsUsers = [];
+let allVsQuota = [];      // [{id, service_name, total_qty}]
+let vsServiceCats = [];   // 설정(카테고리 vs_service)에 등록된 서비스명 (정렬순)
 
 function _vsSetVal(id, v) { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); }
 function _vsCanWrite() {
   return !(typeof AuthManager !== 'undefined' && AuthManager.hasPermission && !AuthManager.hasPermission('sub', 'write'));
 }
 
+// 설정 카테고리(서비스명) + 총수량 로드
+async function loadVsServiceMeta() {
+  try {
+    const [cats, quota] = await Promise.all([
+      apiFetch('categories?limit=500'),
+      apiFetch(`${VS_QUOTA_TBL}?limit=500`),
+    ]);
+    vsServiceCats = (cats?.data || [])
+      .filter(c => c.menu_group === 'vs_service' && c.active !== false)
+      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+      .map(c => c.value);
+    allVsQuota = quota?.data || [];
+  } catch (e) {
+    vsServiceCats = vsServiceCats.length ? vsServiceCats : [];
+    allVsQuota = allVsQuota.length ? allVsQuota : [];
+  }
+}
+
+// 현황표에 표시할 서비스 목록: 설정 카테고리 ∪ 사용자 데이터 ∪ 총수량 등록분
+function vsServiceList() {
+  const list = [];
+  const push = s => { if (s && !list.includes(s)) list.push(s); };
+  vsServiceCats.forEach(push);
+  allVsUsers.forEach(v => push(v.service_name));
+  allVsQuota.forEach(q => push(q.service_name));
+  return list;
+}
+
 async function loadVsUsers() {
   try {
     const data = await apiFetch(`${VS_TBL}?limit=1000`);
     allVsUsers = data?.data || [];
+    await loadVsServiceMeta();
 
-    // 서비스명 필터 옵션 채우기 (데이터 기준)
-    const services = [...new Set(allVsUsers.map(v => v.service_name).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+    // 서비스명 필터 옵션 (설정 카테고리 + 데이터 기준 전체)
+    const services = vsServiceList().slice().sort((a, b) => a.localeCompare(b, 'ko'));
     const sel = document.getElementById('vsFilterService');
     if (sel) {
       const cur = sel.value;
       sel.innerHTML = '<option value="">전체</option>' + services.map(s => `<option>${s}</option>`).join('');
       if (services.includes(cur)) sel.value = cur;
     }
+
+    renderVsStatus();
     renderVsUsersTable();
   } catch (e) {
     showToast('Visual Studio 사용자 로드 실패: ' + e.message, 'error');
+  }
+}
+
+// 서비스별 현황표: 총 수량(입력) / 사용(계정할당 O) / 잔여
+function renderVsStatus() {
+  const tbody = document.getElementById('vsStatusBody');
+  if (!tbody) return;
+
+  const services = vsServiceList();
+  if (!services.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-400 px-4">등록된 서비스명이 없습니다. 설정에서 추가하세요.</td></tr>';
+    return;
+  }
+
+  const quotaMap = {};
+  allVsQuota.forEach(q => { quotaMap[q.service_name] = q; });
+  const usedMap = {};
+  allVsUsers.forEach(v => {
+    if ((v.assigned || 'X') === 'O') {
+      const s = v.service_name || '';
+      usedMap[s] = (usedMap[s] || 0) + 1;
+    }
+  });
+
+  const canWrite = _vsCanWrite();
+
+  tbody.innerHTML = services.map(s => {
+    const total  = quotaMap[s] ? (Number(quotaMap[s].total_qty) || 0) : 0;
+    const used   = usedMap[s] || 0;
+    const remain = total - used;
+    const remainCls = remain < 0 ? 'text-red-600 font-bold' : (remain <= 3 ? 'text-orange-600 font-semibold' : 'text-gray-700');
+    const sJs = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const totalCell = canWrite
+      ? `<input type="number" min="0" value="${total}" onchange="saveVsQuota('${sJs}', this.value)" class="w-20 px-2 py-1 border border-gray-200 rounded text-right text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"/>`
+      : `<span>${total}</span>`;
+    return `<tr class="border-b border-gray-50 hover:bg-purple-50/20">
+      <td class="px-4 py-2.5 font-medium text-gray-700">${s}</td>
+      <td class="px-4 py-2.5 text-right">${totalCell}</td>
+      <td class="px-4 py-2.5 text-right font-semibold text-purple-700">${used}</td>
+      <td class="px-4 py-2.5 text-right ${remainCls}">${remain}</td>
+    </tr>`;
+  }).join('');
+}
+
+// 총 수량 저장 (있으면 수정, 없으면 신규)
+async function saveVsQuota(serviceName, value) {
+  if (!_vsCanWrite()) { showToast('권한이 없습니다.', 'error'); loadVsUsers(); return; }
+  const qty = Math.max(0, parseInt(value, 10) || 0);
+  try {
+    const existing = allVsQuota.find(q => q.service_name === serviceName);
+    if (existing) {
+      await apiFetch(`${VS_QUOTA_TBL}/${existing.id}`, { method: 'PUT', body: JSON.stringify({ total_qty: qty }) });
+    } else {
+      await apiFetch(VS_QUOTA_TBL, { method: 'POST', body: JSON.stringify({ service_name: serviceName, total_qty: qty }) });
+    }
+    await loadVsServiceMeta();
+    renderVsStatus();
+    showToast('총 수량이 저장되었습니다.', 'success');
+  } catch (e) {
+    showToast('총 수량 저장 실패: ' + e.message, 'error');
   }
 }
 
