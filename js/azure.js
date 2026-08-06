@@ -78,7 +78,7 @@ async function renderAzureDashboard() {
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
     renderAzCostServiceMomTable();
-    renderAzResourceGroupSummary();
+    loadDashAruAndRender();
 
     // ── 최근 비용 내역 ──
     const tbody = document.getElementById('azureRecentCostBody');
@@ -917,6 +917,7 @@ async function loadAiLicenseCosts() {
     });
 
     renderAiCostTable();
+    if (typeof renderAiCostPivot === 'function') renderAiCostPivot();
   } catch (e) {
     showToast('AI 라이선스 비용 로드 실패: ' + e.message, 'error');
   }
