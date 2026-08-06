@@ -169,23 +169,13 @@
 
     <!-- ===== 자산 대장 ===== -->
     <section id="page-assets" class="page-section">
-      <!-- 장비명별 요약 (등록대수 / 반출수 / 5년이상 교체대상) -->
+      <!-- 장비별 현황 (장비명별 등록수 / 반출수) -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-layer-group text-blue-500"></i>장비명별 현황 요약</span>
+          <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-layer-group text-blue-500"></i>장비별 현황</span>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <tr>
-                <th class="px-4 py-2.5 text-left">장비명</th>
-                <th class="px-4 py-2.5 text-right">등록대수</th>
-                <th class="px-4 py-2.5 text-right">반출수</th>
-                <th class="px-4 py-2.5 text-right">5년 이상 (교체대상)</th>
-              </tr>
-            </thead>
-            <tbody id="assetNameSummaryBody"><tr><td colspan="4" class="text-center py-8 text-gray-400">데이터가 없습니다.</td></tr></tbody>
-          </table>
+        <div class="overflow-x-auto p-4">
+          <table id="assetSummaryTable" class="text-sm border-collapse"><tbody><tr><td class="text-center py-8 text-gray-400 px-4">데이터가 없습니다.</td></tr></tbody></table>
         </div>
       </div>
 
@@ -1641,13 +1631,13 @@
 <!-- 토스트 알림 -->
 <div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2"></div>
 
-<script src="js/supabase.js?v=20260807a"></script>
-<script src="js/auth.js?v=20260807a"></script>
-<script src="js/app.js?v=20260807a"></script>
-<script src="js/subscription.js?v=20260807a"></script>
-<script src="js/promotions.js?v=20260807a"></script>
-<script src="js/azure.js?v=20260807a"></script>
-<script src="js/ported.js?v=20260807a"></script>
+<script src="js/supabase.js?v=20260807b"></script>
+<script src="js/auth.js?v=20260807b"></script>
+<script src="js/app.js?v=20260807b"></script>
+<script src="js/subscription.js?v=20260807b"></script>
+<script src="js/promotions.js?v=20260807b"></script>
+<script src="js/azure.js?v=20260807b"></script>
+<script src="js/ported.js?v=20260807b"></script>
 <script>
   // ── 인증 가드 ──
   (function() {
