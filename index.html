@@ -60,6 +60,7 @@
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-register"><i class="fas fa-plus-square w-4 text-center flex-shrink-0"></i><span class="sidebar-text">구독 등록</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-renewal"><i class="fas fa-bell w-4 text-center flex-shrink-0"></i><span class="sidebar-text">갱신 알림</span><span id="renewalBadge" class="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full hidden sidebar-text">0</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-cost"><i class="fas fa-chart-line w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용 분석</span></a></li>
+        <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="sub-vs"><i class="fab fa-microsoft w-4 text-center flex-shrink-0"></i><span class="sidebar-text">Visual Studio 사용자</span></a></li>
         <li class="admin-only hidden"><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="sub-settings"><i class="fas fa-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">설정</span></a></li>
       </ul>
     </div>
@@ -90,7 +91,6 @@
       <ul class="nav-group-menu overflow-hidden transition-all duration-300" style="max-height:0;">
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-dashboard"><i class="fas fa-chart-pie w-4 text-center flex-shrink-0"></i><span class="sidebar-text">비용 대시보드</span></a></li>
         <li><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50" data-page="azure-costs"><i class="fas fa-file-invoice-dollar w-4 text-center flex-shrink-0"></i><span class="sidebar-text">월별 비용대장</span></a></li>
-        <li class="admin-only hidden"><a href="#" class="nav-link nav-sub flex items-center gap-3 pl-9 pr-3 py-2 rounded-lg text-sm font-medium transition-all text-blue-200 hover:bg-blue-700/50 border-t border-blue-700/40 mt-1 pt-2.5" data-page="azure-settings"><i class="fas fa-cog w-4 text-center flex-shrink-0"></i><span class="sidebar-text">설정</span></a></li>
       </ul>
     </div>
 
@@ -329,6 +329,44 @@
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-purple-500"></i>결제 주기별 연간 비용</h3><div style="height:260px;position:relative;"><canvas id="costCycleChart"></canvas></div></div>
       </div>
       <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-sort-amount-down text-purple-500"></i>서비스별 연간 비용 TOP 10</h3><div id="costTopList" class="space-y-2"></div></div>
+    </section>
+
+    <!-- ===== IT 정기결제 - Visual Studio 사용자 ===== -->
+    <section id="page-sub-vs" class="page-section hidden">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="vsSearchInput" oninput="renderVsUsersTable()" placeholder="사원명, 부서, 서비스명, 직책..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"/></div></div>
+          <div class="min-w-40"><label class="text-xs font-semibold text-gray-600 block mb-1">서비스명</label><select id="vsFilterService" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option></select></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">계정할당</label><select id="vsFilterAssigned" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option value="O">O (할당)</option><option value="X">X (미할당)</option></select></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <span id="vsCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
+          <div class="flex gap-2">
+            <button onclick="exportVsExcel()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-1"><i class="fas fa-file-excel"></i>Excel</button>
+            <button onclick="openVsUserModal()" class="text-xs px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 flex items-center gap-1"><i class="fas fa-plus"></i>사용자 추가</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">서비스명</th>
+                <th class="px-4 py-3 text-left">부서</th>
+                <th class="px-4 py-3 text-left">사원명</th>
+                <th class="px-4 py-3 text-left">직책</th>
+                <th class="px-4 py-3 text-center">계정할당여부</th>
+                <th class="px-4 py-3 text-left">할당된 날짜</th>
+                <th class="px-4 py-3 text-left">해지일자</th>
+                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody id="vsTableBody"><tr><td colspan="9" class="text-center py-16 text-gray-400"><i class="fab fa-microsoft text-4xl block mb-3 opacity-20"></i>등록된 사용자가 없습니다. 우측 상단 <b>사용자 추가</b>로 시작하세요.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ===== 판촉물 재고 현황 ===== -->
@@ -1010,6 +1048,7 @@
       <div class="flex gap-2 mb-5 flex-wrap">
         <button onclick="switchCatTab('assets')" id="catTab-assets" class="cat-tab active-cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🖥️ 고정자산 분류</button>
         <button onclick="switchCatTab('sub')" id="catTab-sub" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">💳 IT정기결제 카테고리</button>
+        <button onclick="switchCatTab('vs_service')" id="catTab-vs_service" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🧩 Visual Studio 서비스명</button>
         <button onclick="switchCatTab('promo')" id="catTab-promo" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🎁 판촉물 분류</button>
         <button onclick="switchCatTab('azure')" id="catTab-azure" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">☁️ Azure 서비스구분</button>
         <button onclick="switchCatTab('azure_restype')" id="catTab-azure_restype" class="cat-tab px-4 py-2 rounded-lg text-sm font-semibold border">🧩 Azure 리소스 타입</button>
@@ -1582,6 +1621,28 @@
 </div>
 
 <!-- ========== 모달: 구독 등록/수정 ========== -->
+<!-- ========== 모달: Visual Studio 사용자 ========== -->
+<div id="vsUserModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 id="vsUserModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fab fa-microsoft text-purple-500"></i>Visual Studio 사용자 등록</h2><button onclick="closeModal('vsUserModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+    <form id="vsUserForm" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="editVsId" value=""/>
+      <div><label class="form-label">서비스명 *</label><select id="vsf_service_name" class="form-input" required><option value="">선택하세요</option><option>Security</option><option>Modern Work</option></select></div>
+      <div><label class="form-label">부서</label><input type="text" id="vsf_department" class="form-input"/></div>
+      <div><label class="form-label">사원명 *</label><input type="text" id="vsf_employee_name" class="form-input" required/></div>
+      <div><label class="form-label">직책</label><input type="text" id="vsf_title" class="form-input"/></div>
+      <div><label class="form-label">계정할당여부</label><select id="vsf_assigned" class="form-input"><option value="O">O (할당)</option><option value="X">X (미할당)</option></select></div>
+      <div><label class="form-label">할당된 날짜</label><input type="date" id="vsf_assigned_date" class="form-input"/></div>
+      <div><label class="form-label">해지일자</label><input type="date" id="vsf_terminated_date" class="form-input"/></div>
+      <div class="md:col-span-2"><label class="form-label">비고</label><textarea id="vsf_note" rows="2" class="form-input resize-none"></textarea></div>
+    </form>
+    <div class="flex justify-end gap-2 p-5 border-t border-gray-100">
+      <button onclick="saveVsUser()" class="px-5 py-2.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 font-medium flex items-center gap-1.5"><i class="fas fa-save"></i>저장</button>
+      <button onclick="closeModal('vsUserModal')" class="px-5 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 font-medium">취소</button>
+    </div>
+  </div>
+</div>
+
 <div id="subRegisterModal" class="modal-overlay hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between p-5 border-b border-gray-100"><h2 id="subRegisterModalTitle" class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-credit-card text-purple-500"></i>구독 서비스 등록</h2><button onclick="closeModal('subRegisterModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
@@ -1638,6 +1699,7 @@
 <script src="js/promotions.js?v=20260807b"></script>
 <script src="js/azure.js?v=20260807b"></script>
 <script src="js/ported.js?v=20260807b"></script>
+<script src="js/vs.js?v=20260807b"></script>
 <script>
   // ── 인증 가드 ──
   (function() {
