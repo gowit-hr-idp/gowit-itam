@@ -540,7 +540,7 @@
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-gray-500">이번달 총 비용</span>
+            <span class="text-xs font-semibold text-gray-500">2026년 총 누적비용</span>
             <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-won-sign text-blue-600 text-sm"></i></div>
           </div>
           <div id="az-stat-total-cost" class="text-2xl font-bold text-gray-800">-</div>
@@ -548,7 +548,7 @@
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-gray-500">리소스 수</span>
+            <span class="text-xs font-semibold text-gray-500">이번달 총비용</span>
             <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center"><i class="fas fa-server text-indigo-600 text-sm"></i></div>
           </div>
           <div id="az-stat-resources" class="text-2xl font-bold text-gray-800">-</div>
@@ -567,7 +567,7 @@
       <!-- 차트 영역 -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>서비스별 비용 분포</h3>
+          <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-chart-bar text-blue-500"></i>서비스별 비용 분포(당월)</h3>
           <div style="height:220px;"><canvas id="azureCostByServiceChart"></canvas></div>
           <div class="mt-4 overflow-x-auto">
             <table class="w-full text-xs">
@@ -580,26 +580,11 @@
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h3 class="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i>서비스구분별 리소스 비용 (업로드 연동)</h3>
-          <p class="text-xs text-gray-400 mb-3">업로드한 "리소스 비용 명세"를 <b>분류</b> 기준으로 집계하고, 분류 아래 서비스명별로 세분합니다 (최근 기준월).</p>
+          <p class="text-xs text-gray-400 mb-3">업로드한 "리소스 비용 명세"를 <b>분류</b> 기준으로 집계하고, 분류 아래 서비스명별로 세분합니다 (당월 기준 · raw data 없으면 표시 안 함).</p>
           <div id="azResGroupSummary" class="space-y-1 max-h-64 overflow-y-auto"></div>
         </div>
       </div>
 
-      <!-- 최근 비용 내역 -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-history text-gray-400"></i>최근 비용 입력 내역</h3>
-          <button onclick="navigateTo('azure-costs')" class="text-xs text-blue-500 hover:underline">전체 보기 →</button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-              <tr><th class="px-4 py-3 text-left">기간</th><th class="px-4 py-3 text-left">부서</th><th class="px-4 py-3 text-left">서비스(품의서)</th><th class="px-4 py-3 text-right">금액(원)</th></tr>
-            </thead>
-            <tbody id="azureRecentCostBody"><tr><td colspan="4" class="text-center py-10 text-gray-400">데이터가 없습니다.</td></tr></tbody>
-          </table>
-        </div>
-      </div>
     </section>
 
 
