@@ -2464,12 +2464,13 @@ const CAT_GROUP_LABELS = {
   azure_cost_dept:     'Azure 비용 - 부서',
   azure_cost_service:  'Azure 비용 - 서비스(품의서)',
   ai_license:          'AI 라이선스 서비스',
+  vs_service:          'Visual Studio 서비스명',
 };
 
 // 각 메뉴별 "설정" 페이지에서 노출할 카테고리 탭 목록
 const SETTINGS_PAGE_GROUPS = {
   'assets-settings': ['assets'],
-  'sub-settings':    ['sub'],
+  'sub-settings':    ['sub', 'vs_service'],
   'promo-settings':  ['promo'],
   'azure-settings':  ['azure', 'azure_restype', 'azure_cost_dept', 'azure_cost_service'],
   'ai-settings':     ['ai_license'],

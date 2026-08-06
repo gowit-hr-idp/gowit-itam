@@ -70,7 +70,7 @@ function updateSortIcons(key, activeField, dir) {
 const PAGE_PERMISSION_GROUP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
   repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets',
-  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub',
+  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-vs': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo',
   'azure-dashboard': 'azure', 'azure-costs': 'azure',
   'ai-licenses': 'ai', 'ai-costs': 'ai', 'ai-keys': 'ai', 'ai-seats': 'ai', 'ai-dept-summary': 'ai', 'ai-history': 'ai',
@@ -187,7 +187,7 @@ async function loadAllAssets() {
 const PAGE_GROUP_MAP = {
   assets: 'assets', register: 'assets', checkout: 'assets', return: 'assets',
   repair: 'assets', dispose: 'assets', history: 'assets', lifecycle: 'assets', 'assets-settings': 'assets',
-  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub',
+  'sub-list': 'sub', 'sub-register': 'sub', 'sub-renewal': 'sub', 'sub-cost': 'sub', 'sub-settings': 'sub', 'sub-vs': 'sub',
   'promo-stock': 'promo', 'promo-in': 'promo', 'promo-out': 'promo', 'promo-history': 'promo', 'promo-settings': 'promo',
   'azure-dashboard': 'azure', 'azure-costs': 'azure', 'azure-settings': 'azure',
   'ai-licenses': 'ai_license', 'ai-costs': 'ai_license', 'ai-keys': 'ai_license', 'ai-settings': 'ai_license',
@@ -311,6 +311,7 @@ async function navigateTo(page) {
     'ai-keys':         ['API 키 관리',         '홈 / AI 라이선스 / API 키 관리'],
     'assets-settings': ['고정자산 관리 설정',  '홈 / 고정자산 관리 / 설정'],
     'sub-settings':    ['IT정기결제 설정',     '홈 / IT 정기결제 / 설정'],
+    'sub-vs':          ['Visual Studio 사용자', '홈 / IT 정기결제 / Visual Studio 사용자'],
     'promo-settings':  ['판촉물 관리 설정',    '홈 / 판촉물 관리 / 설정'],
     'azure-settings':  ['Azure 관리 설정',     '홈 / Azure 관리 / 설정'],
     'ai-settings':     ['AI 라이선스 설정',    '홈 / AI 라이선스 / 설정'],
@@ -337,6 +338,7 @@ async function navigateTo(page) {
     case 'sub-register': openModal('subRegisterModal'); navigateTo('sub-list'); break;
     case 'sub-renewal':  await renderRenewalPage(); break;
     case 'sub-cost':     await renderCostAnalysis(); break;
+    case 'sub-vs':          refreshAllCategoryDropdowns(); await loadVsUsers(); break;
     case 'promo-stock':    await renderPromoStock(); break;
     case 'promo-in':
       await loadAllPromoItems();
@@ -1342,6 +1344,7 @@ const CATEGORY_DROPDOWN_MAP = [
   { selectId: 'azc_service_name',   group: 'azure_cost_service' },
   { selectId: 'azCostFilterDept',   group: 'azure_cost_dept'  },
   { selectId: 'azl_license_type',   group: 'ai_license'       },
+  { selectId: 'vsf_service_name',   group: 'vs_service'       },
 ];
 
 async function loadAllCategoryRows() {
@@ -1392,7 +1395,7 @@ async function refreshAllCategoryDropdowns() {
 // ============================================================
 // 모달 유틸
 // ============================================================
-const CATEGORY_REFRESH_MODALS = ['registerModal', 'subRegisterModal', 'azureResModal', 'azureLicModal', 'azureCostModal'];
+const CATEGORY_REFRESH_MODALS = ['registerModal', 'subRegisterModal', 'azureResModal', 'azureLicModal', 'azureCostModal', 'vsUserModal'];
 
 function openModal(id) {
   const el = document.getElementById(id);
