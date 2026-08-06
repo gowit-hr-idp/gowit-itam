@@ -55,16 +55,17 @@ async function renderAzureDashboard() {
     const periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
     const latestPeriod = periods[periods.length - 1];
     const prevPeriod    = periods[periods.length - 2];
-    const totalCostKrw  = allAzureCosts.reduce((s, c) => s + (Number(c.actual_cost_krw) || 0), 0);
+    const year2026Krw   = allAzureCosts.filter(c => (c.period || '').startsWith('2026')).reduce((s, c) => s + (Number(c.actual_cost_krw) || 0), 0);
     const latestCostKrw = latestPeriod ? allAzureCosts.filter(c => c.period === latestPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const prevCostKrw   = prevPeriod   ? allAzureCosts.filter(c => c.period === prevPeriod).reduce((s,c)=>s+(Number(c.actual_cost_krw)||0),0) : 0;
     const momDiff       = latestCostKrw - prevCostKrw;
-    const runningCount  = allAzureResources.filter(r => r.status === 'Running').length;
 
-    setEl('az-stat-total-cost',   '₩' + totalCostKrw.toLocaleString());
-    setEl('az-stat-total-period', latestPeriod ? `최근월(${latestPeriod}) ₩${latestCostKrw.toLocaleString()}` : '데이터 없음');
-    setEl('az-stat-resources',    allAzureResources.length);
-    setEl('az-stat-resources-running', `Running ${runningCount}개`);
+    // 카드1: 2026년 총 누적비용
+    setEl('az-stat-total-cost',   '₩' + year2026Krw.toLocaleString());
+    setEl('az-stat-total-period', '2026년 누적 발생비용');
+    // 카드2: 이번달 총비용 (당월 법인카드 합계)
+    setEl('az-stat-resources',    '₩' + latestCostKrw.toLocaleString());
+    setEl('az-stat-resources-running', latestPeriod ? `당월(${latestPeriod}) 합계` : '데이터 없음');
 
     if (periods.length >= 2) {
       const sign = momDiff > 0 ? '+' : '';
@@ -78,7 +79,7 @@ async function renderAzureDashboard() {
     // ── 서비스별 비용 차트 ──
     renderAzCostByServiceChart();
     renderAzCostServiceMomTable();
-    loadDashAruAndRender();
+    loadDashAruAndRender(latestPeriod);
 
     // ── 최근 비용 내역 ──
     const tbody = document.getElementById('azureRecentCostBody');
@@ -108,9 +109,11 @@ function renderAzCostByServiceChart() {
   if (!ctx) return;
   if (azCostByServiceChart) { azCostByServiceChart.destroy(); azCostByServiceChart = null; }
 
-  // 서비스별 KRW 합산
+  // [당월] 최신 기준월의 서비스별 KRW 합산
+  const _periods = [...new Set(allAzureCosts.map(c => c.period).filter(Boolean))].sort();
+  const _latest = _periods[_periods.length - 1];
   const map = {};
-  allAzureCosts.forEach(c => {
+  allAzureCosts.filter(c => c.period === _latest).forEach(c => {
     const key = c.service_name || '기타';
     map[key] = (map[key] || 0) + (Number(c.actual_cost_krw) || 0);
   });

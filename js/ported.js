@@ -577,21 +577,16 @@ async function deleteAruPeriod() {
 }
 
 // ---------- 대시보드용 ARU 로드 래퍼 ----------
-async function loadDashAruAndRender() {
+async function loadDashAruAndRender(currentPeriod) {
   try {
-    const periods = await _aruDistinctPeriods();
-    dashAruLatestPeriod = periods[periods.length - 1] || null;
-    dashAruPrevPeriod   = periods[periods.length - 2] || null;
-    dashAruLatest = dashAruLatestPeriod ? await _aruFetchByPeriod(dashAruLatestPeriod) : [];
-    dashAruPrev   = dashAruPrevPeriod   ? await _aruFetchByPeriod(dashAruPrevPeriod)   : [];
-    const svcCount  = new Set(dashAruLatest.map(r => r.service_name || '기타')).size;
-    const costTotal = dashAruLatest.reduce((s, r) => s + (Number(r.cost_krw) || 0), 0);
-    if (typeof setEl === 'function') {
-      setEl('az-stat-resources', dashAruLatest.length);
-      setEl('az-stat-resources-running', dashAruLatestPeriod
-        ? `${dashAruLatestPeriod} · ${svcCount}개 서비스 · ₩${Math.round(costTotal).toLocaleString()}`
-        : '업로드 데이터 없음');
-    }
+    // 대시보드 '당월'(법인카드 최신월)과 동일 기준월의 리소스 비용 명세만 연동.
+    // 해당 월에 raw data가 없으면 패널은 비어 있게 표시됩니다.
+    const period = currentPeriod || null;
+    dashAruLatestPeriod = period;
+    dashAruLatest = period ? await _aruFetchByPeriod(period) : [];
     renderAruCategorySummary();
-  } catch (e) { /* 대시보드 로드 실패해도 다른 위젯에 영향 없게 무시 */ }
+  } catch (e) {
+    dashAruLatest = [];
+    renderAruCategorySummary();
+  }
 }
