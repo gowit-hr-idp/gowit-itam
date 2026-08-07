@@ -7,7 +7,8 @@ const VS_TBL = 'vs_users';
 const VS_QUOTA_TBL = 'vs_service_quota';
 let allVsUsers = [];
 let allVsQuota = [];      // [{id, service_name, total_qty}]
-let vsServiceCats = [];   // 설정(카테고리 vs_service)에 등록된 서비스명 (정렬순)
+let vsServiceCats = [];   // 설정(카테고리 vs_service)에 등록된 '활성' 서비스명 (정렬순)
+let vsInactiveServices = new Set(); // 설정에서 '비활성화'한 서비스명 → 목록에서 제외
 
 function _vsSetVal(id, v) { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); }
 function _vsCanWrite() {
@@ -21,10 +22,13 @@ async function loadVsServiceMeta() {
       apiFetch('categories?limit=500'),
       apiFetch(`${VS_QUOTA_TBL}?limit=500`),
     ]);
-    vsServiceCats = (cats?.data || [])
-      .filter(c => c.menu_group === 'vs_service' && c.active !== false)
+    const vsCats = (cats?.data || []).filter(c => c.menu_group === 'vs_service');
+    vsServiceCats = vsCats
+      .filter(c => c.active !== false)
       .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
       .map(c => c.value);
+    // 설정에서 비활성화(active=false)한 서비스명 → 화면에서 숨김
+    vsInactiveServices = new Set(vsCats.filter(c => c.active === false).map(c => c.value));
     allVsQuota = quota?.data || [];
   } catch (e) {
     vsServiceCats = vsServiceCats.length ? vsServiceCats : [];
@@ -32,10 +36,10 @@ async function loadVsServiceMeta() {
   }
 }
 
-// 현황표에 표시할 서비스 목록: 설정 카테고리 ∪ 사용자 데이터 ∪ 총수량 등록분
+// 현황표에 표시할 서비스 목록: 설정 카테고리 ∪ 사용자 데이터 ∪ 총수량 등록분 (비활성 제외)
 function vsServiceList() {
   const list = [];
-  const push = s => { if (s && !list.includes(s)) list.push(s); };
+  const push = s => { if (s && !list.includes(s) && !vsInactiveServices.has(s)) list.push(s); };
   vsServiceCats.forEach(push);
   allVsUsers.forEach(v => push(v.service_name));
   allVsQuota.forEach(q => push(q.service_name));
@@ -133,6 +137,8 @@ function renderVsUsersTable() {
   const fAssigned = document.getElementById('vsFilterAssigned')?.value || '';
 
   let rows = allVsUsers.slice();
+  // 설정에서 비활성화한 서비스명은 리스트에서 제외
+  rows = rows.filter(v => !vsInactiveServices.has(v.service_name || ''));
   if (fSvc) rows = rows.filter(v => (v.service_name || '') === fSvc);
   if (fAssigned) rows = rows.filter(v => (v.assigned || 'X') === fAssigned);
   if (q) rows = rows.filter(v =>
