@@ -333,13 +333,6 @@
 
     <!-- ===== IT 정기결제 - Visual Studio 사용자 ===== -->
     <section id="page-sub-vs" class="page-section hidden">
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
-        <div class="flex flex-wrap gap-3 items-end">
-          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="vsSearchInput" oninput="renderVsUsersTable()" placeholder="사원명, 부서, 서비스명, 직책..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"/></div></div>
-          <div class="min-w-40"><label class="text-xs font-semibold text-gray-600 block mb-1">서비스명</label><select id="vsFilterService" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option></select></div>
-          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">계정할당</label><select id="vsFilterAssigned" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option value="O">O (할당)</option><option value="X">X (미할당)</option></select></div>
-        </div>
-      </div>
       <!-- 서비스별 현황 -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
@@ -361,6 +354,13 @@
         </div>
       </div>
 
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-48"><label class="text-xs font-semibold text-gray-600 block mb-1">검색</label><div class="relative"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i><input type="text" id="vsSearchInput" oninput="renderVsUsersTable()" placeholder="사원명, 부서, 서비스명, 직책..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"/></div></div>
+          <div class="min-w-40"><label class="text-xs font-semibold text-gray-600 block mb-1">서비스명</label><select id="vsFilterService" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option></select></div>
+          <div class="min-w-32"><label class="text-xs font-semibold text-gray-600 block mb-1">계정할당</label><select id="vsFilterAssigned" onchange="renderVsUsersTable()" class="px-3 py-2 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-purple-500"><option value="">전체</option><option value="O">O (할당)</option><option value="X">X (미할당)</option></select></div>
+        </div>
+      </div>
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <span id="vsCount" class="text-sm font-semibold text-gray-700">전체 0건</span>
@@ -1713,14 +1713,14 @@
 <!-- 토스트 알림 -->
 <div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2"></div>
 
-<script src="js/supabase.js?v=20260807c"></script>
-<script src="js/auth.js?v=20260807c"></script>
-<script src="js/app.js?v=20260807c"></script>
-<script src="js/subscription.js?v=20260807c"></script>
-<script src="js/promotions.js?v=20260807c"></script>
-<script src="js/azure.js?v=20260807c"></script>
-<script src="js/ported.js?v=20260807c"></script>
-<script src="js/vs.js?v=20260807c"></script>
+<script src="js/supabase.js?v=20260807d"></script>
+<script src="js/auth.js?v=20260807d"></script>
+<script src="js/app.js?v=20260807d"></script>
+<script src="js/subscription.js?v=20260807d"></script>
+<script src="js/promotions.js?v=20260807d"></script>
+<script src="js/azure.js?v=20260807d"></script>
+<script src="js/ported.js?v=20260807d"></script>
+<script src="js/vs.js?v=20260807d"></script>
 <script>
   // ── 인증 가드 ──
   (function() {
