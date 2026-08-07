@@ -373,14 +373,14 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">
               <tr>
-                <th class="px-4 py-3 text-left">서비스명</th>
-                <th class="px-4 py-3 text-left">부서</th>
-                <th class="px-4 py-3 text-left">사원명</th>
-                <th class="px-4 py-3 text-left">직책</th>
-                <th class="px-4 py-3 text-center">계정할당여부</th>
-                <th class="px-4 py-3 text-left">할당된 날짜</th>
-                <th class="px-4 py-3 text-left">해지일자</th>
-                <th class="px-4 py-3 text-left">비고</th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="service_name" onclick="sortTableHeader('vs','service_name','string')">서비스명<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="department" onclick="sortTableHeader('vs','department','string')">부서<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="employee_name" onclick="sortTableHeader('vs','employee_name','string')">사원명<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="title" onclick="sortTableHeader('vs','title','string')">직책<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="assigned" onclick="sortTableHeader('vs','assigned','string')">계정할당여부<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="assigned_date" onclick="sortTableHeader('vs','assigned_date','string')">할당된 날짜<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="terminated_date" onclick="sortTableHeader('vs','terminated_date','string')">해지일자<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="px-4 py-3 text-left cursor-pointer select-none hover:text-blue-600" data-sort-table="vs" data-sort-field="note" onclick="sortTableHeader('vs','note','string')">비고<i class="sort-icon fas fa-sort text-gray-300 ml-1"></i></th>
                 <th class="px-4 py-3 text-center">관리</th>
               </tr>
             </thead>
@@ -1713,14 +1713,14 @@
 <!-- 토스트 알림 -->
 <div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2"></div>
 
-<script src="js/supabase.js?v=20260807d"></script>
-<script src="js/auth.js?v=20260807d"></script>
-<script src="js/app.js?v=20260807d"></script>
-<script src="js/subscription.js?v=20260807d"></script>
-<script src="js/promotions.js?v=20260807d"></script>
-<script src="js/azure.js?v=20260807d"></script>
-<script src="js/ported.js?v=20260807d"></script>
-<script src="js/vs.js?v=20260807d"></script>
+<script src="js/supabase.js?v=20260807e"></script>
+<script src="js/auth.js?v=20260807e"></script>
+<script src="js/app.js?v=20260807e"></script>
+<script src="js/subscription.js?v=20260807e"></script>
+<script src="js/promotions.js?v=20260807e"></script>
+<script src="js/azure.js?v=20260807e"></script>
+<script src="js/ported.js?v=20260807e"></script>
+<script src="js/vs.js?v=20260807e"></script>
 <script>
   // ── 인증 가드 ──
   (function() {
